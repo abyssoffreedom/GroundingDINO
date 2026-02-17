@@ -1,6 +1,5 @@
 import argparse
 import base64
-import imghdr
 import os
 import sys
 from pathlib import Path
@@ -23,10 +22,22 @@ def load_b64_data(b64: str) -> bytes:
 
 
 def detect_ext(data: bytes) -> str:
-    kind = imghdr.what(None, h=data)
-    if not kind:
-        return "bin"
-    return "jpg" if kind == "jpeg" else kind
+    # Minimal, dependency-free magic-bytes detection for common formats
+    try:
+        if data.startswith(b"\xff\xd8\xff"):
+            return "jpg"
+        if data.startswith(b"\x89PNG\r\n\x1a\n"):
+            return "png"
+        if data.startswith(b"GIF87a") or data.startswith(b"GIF89a"):
+            return "gif"
+        if data.startswith(b"BM"):
+            return "bmp"
+        # WebP: RIFF....WEBP
+        if len(data) >= 12 and data[0:4] == b"RIFF" and data[8:12] == b"WEBP":
+            return "webp"
+    except Exception:
+        pass
+    return "bin"
 
 
 def main():

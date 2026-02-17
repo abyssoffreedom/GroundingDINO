@@ -29,6 +29,7 @@ class InferenceParams(BaseModel):
 class DetectionResult(BaseModel):
     image_id: str
     boxes: List[List[float]]
+    boxes_coco: Optional[List[List[float]]] = None
     phrases: List[str]
     scores: List[float]
     visualization_b64: Optional[str] = None
@@ -44,8 +45,6 @@ class DetectResponse(BaseModel):
     request_id: str
     device: str
     results: List[DetectionResult]
-    # total forward pass time in milliseconds across all images (server-side)
-    forward_ms: Optional[float] = None
     metrics: Optional[Metrics] = None
 
 # ---------- Preprocessing & helpers ----------
@@ -65,7 +64,21 @@ def prepare_image(data: bytes):
 def tensor_boxes_to_xyxy(boxes, size):
     # cxcywh -> xyxy in pixel space
     W, H = size
-    boxes = boxes * torch.tensor([W, H, W, H])
+    boxes = boxes.clone() * torch.tensor([W, H, W, H])
+    boxes[:, :2] -= boxes[:, 2:] / 2
+    boxes[:, 2:] += boxes[:, :2]
+    return boxes
+
+def tensor_boxes_to_coco_xywh(boxes, size):
+    # cxcywh normalized -> [xmin, ymin, w, h] in pixel space
+    W, H = size
+    boxes = boxes.clone() * torch.tensor([W, H, W, H])
+    boxes[:, :2] -= boxes[:, 2:] / 2 # Convert cx, cy to xmin, ymin
+    return boxes
+
+def tensor_boxes_to_normalized_xyxy(boxes):
+    # cxcywh -> xyxy in normalized [0, 1] space
+    boxes = boxes.clone()
     boxes[:, :2] -= boxes[:, 2:] / 2
     boxes[:, 2:] += boxes[:, :2]
     return boxes
@@ -200,11 +213,16 @@ async def detect(
         phrases = phrases[:limit]
         scores = scores[:limit]
 
-        boxes_xyxy = tensor_boxes_to_xyxy(boxes.clone(), size=image_pil.size)
+        # Return normalized xyxy coordinates [0, 1]
+        boxes_xyxy = tensor_boxes_to_normalized_xyxy(boxes)
+        # Return COCO format [xmin, ymin, w, h] in pixels
+        boxes_coco = tensor_boxes_to_coco_xywh(boxes, size=image_pil.size)
+        
         if len(boxes_xyxy) > 0 and 0 <= params.nms_threshold < 1.0:
             score_tensor = torch.tensor(scores)
             keep = nms(boxes_xyxy, score_tensor, params.nms_threshold)
             boxes_xyxy = boxes_xyxy[keep]
+            boxes_coco = boxes_coco[keep]
             boxes = boxes[keep]
             phrases = [phrases[i] for i in keep.tolist()]
             scores = [scores[i] for i in keep.tolist()]
@@ -212,6 +230,7 @@ async def detect(
         result = DetectionResult(
             image_id=image_id,
             boxes=boxes_xyxy.tolist(),
+            boxes_coco=boxes_coco.tolist(),
             phrases=phrases,
             scores=scores,
         )
@@ -237,7 +256,7 @@ async def detect(
         t_server_response_done=float(t1_ms),
     )
 
-    return DetectResponse(request_id=request_id, device=device, results=results, forward_ms=forward_ms_total, metrics=metrics)
+    return DetectResponse(request_id=request_id, device=device, results=results, metrics=metrics)
 
 # 启动方式（示例）：
 # uvicorn server.inference_worker:app --host 0.0.0.0 --port 8000
