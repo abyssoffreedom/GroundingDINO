@@ -8,7 +8,14 @@ import torch
 import time
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, Request
 from pydantic import BaseModel
-from PIL import Image
+from PIL import Image, ImageOps
+# Enable HEIC support
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+except ImportError:
+    print("Warning: pillow_heif not installed. HEIC images will not be supported.")
+
 import groundingdino.datasets.transforms as T
 from torchvision.ops import nms
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -57,7 +64,10 @@ transform = T.Compose(
 )
 
 def prepare_image(data: bytes):
-    image_pil = Image.open(io.BytesIO(data)).convert("RGB")
+    image_pil = Image.open(io.BytesIO(data))
+    # 自动根据 EXIF 信息旋转图片（解决手机照片侧躺问题）
+    image_pil = ImageOps.exif_transpose(image_pil)
+    image_pil = image_pil.convert("RGB")
     image_tensor, _ = transform(image_pil, None)
     return image_pil, image_tensor
 

@@ -35,6 +35,9 @@ def detect_ext(data: bytes) -> str:
         # WebP: RIFF....WEBP
         if len(data) >= 12 and data[0:4] == b"RIFF" and data[8:12] == b"WEBP":
             return "webp"
+        # HEIC: ....ftypheic (common signature)
+        if len(data) >= 12 and data[4:8] == b"ftyp" and data[8:12] in (b"heic", b"heix", b"heim", b"heis"):
+            return "heic"
     except Exception:
         pass
     return "bin"
@@ -84,4 +87,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
