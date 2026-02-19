@@ -20,7 +20,7 @@ import groundingdino.datasets.transforms as T
 from torchvision.ops import nms
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from demo.inference_on_a_image import load_model, get_grounding_output
+from demo.inference_on_a_image import load_model, get_grounding_output, plot_boxes_to_image
 
 CONFIG_PATH = Path("groundingdino/config/GroundingDINO_SwinT_OGC.py")
 CHECKPOINT_PATH = Path("weights/groundingdino_swint_ogc.pth")
@@ -201,16 +201,17 @@ async def detect(
             torch.cuda.synchronize()
         t_fwd0 = time.perf_counter()
 
-        boxes, phrases = get_grounding_output(
-            model=model,
-            image=image_tensor,
-            caption=prompt_text,
-            box_threshold=params.box_threshold,
-            text_threshold=text_threshold_to_use,
-            with_logits=True,
-            cpu_only=(device == "cpu"),
-            token_spans=token_spans,
-        )
+        with torch.autocast(device_type=device, enabled=(device == "cuda")):
+            boxes, phrases = get_grounding_output(
+                model=model,
+                image=image_tensor,
+                caption=prompt_text,
+                box_threshold=params.box_threshold,
+                text_threshold=text_threshold_to_use,
+                with_logits=True,
+                cpu_only=(device == "cpu"),
+                token_spans=token_spans,
+            )
         if device == "cuda":
             torch.cuda.synchronize()
         t_fwd1 = time.perf_counter()
@@ -245,7 +246,6 @@ async def detect(
             scores=scores,
         )
         if params.return_visualization:
-            from demo.inference_on_a_image import plot_boxes_to_image
             vis_image, _ = plot_boxes_to_image(image_pil.copy(), {"size": image_pil.size[::-1], "boxes": boxes, "labels": phrases})
             buffered = io.BytesIO()
             vis_image.save(buffered, format="JPEG")
