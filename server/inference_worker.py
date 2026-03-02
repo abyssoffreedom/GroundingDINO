@@ -164,6 +164,7 @@ async def detect(
     ),
     images: List[UploadFile] = File(...),
 ):
+    t_process_start = time.time() * 1000.0
     if not images:
         raise HTTPException(status_code=400, detail="images array cannot be empty")
 
@@ -255,14 +256,12 @@ async def detect(
     # Compose metrics in body using request.state timestamps from middleware
     t_server_request_received = getattr(request.state, "t_server_request_received", None)
     t1_ms = time.time() * 1000.0
-    # Choose start time: middleware's t_server_request_received if present, else use now as best-effort
-    start_ms = t_server_request_received if isinstance(t_server_request_received, (int, float)) else t1_ms
-    server_e2e_ms = t1_ms - start_ms
+    server_e2e_ms = t1_ms - t_process_start
 
     metrics = Metrics(
         forward_ms=forward_ms_total,
         server_e2e_ms=server_e2e_ms,
-        t_server_request_received=float(start_ms),
+        t_server_request_received=float(t_server_request_received) if t_server_request_received else float(t_process_start),
         t_server_response_done=float(t1_ms),
     )
 
