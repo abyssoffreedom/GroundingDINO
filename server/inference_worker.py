@@ -1,4 +1,3 @@
-import asyncio
 import base64
 import io
 import json
@@ -125,7 +124,6 @@ class ModelManager:
 
 model_manager = ModelManager()
 app = FastAPI(title="GroundingDINO Inference Service")
-PACKET_PAIR_WAIT_TIMEOUT_S = 0.25
 PACKET_PAIR_STATE_TTL_MS = 10_000.0
 
 
@@ -134,10 +132,8 @@ class PacketPairState:
         now_ms = time.time() * 1000.0
         self.arrival_times_ms = {}
         self.packet_gap_ms = None
-        self.event = asyncio.Event()
         self.created_at_ms = now_ms
         self.last_updated_ms = now_ms
-        self.response_count = 0
 
 
 packet_pair_states = {}
@@ -197,26 +193,11 @@ async def _resolve_packet_gap_ms(pair_id: str, sequence_number: int, arrival_ms:
         state.arrival_times_ms[sequence_number] = arrival_ms
         state.last_updated_ms = arrival_ms
 
-        if 1 in state.arrival_times_ms and 2 in state.arrival_times_ms and state.packet_gap_ms is None:
+        if sequence_number == 2 and 1 in state.arrival_times_ms and state.packet_gap_ms is None:
             state.packet_gap_ms = abs(state.arrival_times_ms[2] - state.arrival_times_ms[1])
-            state.event.set()
-
-        event = state.event
-
-    try:
-        await asyncio.wait_for(event.wait(), timeout=PACKET_PAIR_WAIT_TIMEOUT_S)
-    except asyncio.TimeoutError:
-        pass
-
-    async with packet_pair_lock:
-        state = packet_pair_states.get(pair_id)
-        if state is None:
-            return None
-
         packet_gap_ms = state.packet_gap_ms
-        state.response_count += 1
 
-        if state.response_count >= 2 or packet_gap_ms is not None:
+        if sequence_number == 2:
             packet_pair_states.pop(pair_id, None)
 
         return packet_gap_ms
