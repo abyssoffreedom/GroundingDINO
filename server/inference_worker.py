@@ -54,6 +54,15 @@ class DetectResponse(BaseModel):
     results: List[DetectionResult]
     metrics: Optional[Metrics] = None
 
+
+class ProbeResponse(BaseModel):
+    ok: bool
+    bytes_received: int
+    content_type: Optional[str] = None
+    server_e2e_ms: float
+    t_server_request_received: float
+    t_server_response_done: float
+
 # ---------- Preprocessing & helpers ----------
 transform = T.Compose(
     [
@@ -143,6 +152,23 @@ def _parse_optional_json_list(name: str, raw: Optional[str]) -> Optional[List]:
         # treat empty list as not provided
         return None
     return val
+
+
+@app.post("/v1/probe", response_model=ProbeResponse)
+async def probe(request: Request):
+    t_process_start = time.time() * 1000.0
+    body = await request.body()
+    t_server_request_received = getattr(request.state, "t_server_request_received", t_process_start)
+    t1_ms = time.time() * 1000.0
+
+    return ProbeResponse(
+        ok=True,
+        bytes_received=len(body),
+        content_type=request.headers.get("content-type"),
+        server_e2e_ms=t1_ms - t_process_start,
+        t_server_request_received=float(t_server_request_received),
+        t_server_response_done=float(t1_ms),
+    )
 
 
 @app.post("/v1/detect", response_model=DetectResponse)
