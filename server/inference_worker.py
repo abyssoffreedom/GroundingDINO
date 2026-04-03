@@ -64,6 +64,9 @@ class ProbeResponse(BaseModel):
     pair_id: Optional[str] = None
     sequence_number: Optional[int] = None
     packet_gap_ms: Optional[float] = None
+    gap_status: Optional[str] = None
+    gap_reason: Optional[str] = None
+    observed_sequences: Optional[List[int]] = None
     server_e2e_ms: float
     t_server_request_received: float
     t_server_response_done: float
@@ -183,7 +186,7 @@ def _cleanup_stale_packet_pair_states(now_ms: float):
         packet_pair_states.pop(pair_id, None)
 
 
-async def _resolve_packet_gap_ms(pair_id: str, sequence_number: int, arrival_ms: float) -> Optional[float]:
+async def _resolve_packet_gap_ms(pair_id: str, sequence_number: int, arrival_ms: float):
     async with packet_pair_lock:
         _cleanup_stale_packet_pair_states(arrival_ms)
         state = packet_pair_states.get(pair_id)
@@ -194,14 +197,31 @@ async def _resolve_packet_gap_ms(pair_id: str, sequence_number: int, arrival_ms:
         state.arrival_times_ms[sequence_number] = arrival_ms
         state.last_updated_ms = arrival_ms
 
+        observed_sequences = sorted(state.arrival_times_ms.keys())
+
         if sequence_number == 2 and 1 in state.arrival_times_ms and state.packet_gap_ms is None:
             state.packet_gap_ms = abs(state.arrival_times_ms[2] - state.arrival_times_ms[1])
         packet_gap_ms = state.packet_gap_ms
 
+        gap_status = None
+        gap_reason = None
+        if sequence_number == 1:
+            gap_status = "packet1_recorded"
+            gap_reason = "packet1 returned immediately; waiting is disabled by design"
+        elif sequence_number == 2 and packet_gap_ms is not None:
+            gap_status = "gap_computed"
+            gap_reason = "packet1 and packet2 were both present when packet2 was processed"
+        elif sequence_number == 2 and 1 not in state.arrival_times_ms:
+            gap_status = "packet1_missing_when_packet2_processed"
+            gap_reason = "packet2 reached the app before packet1 was recorded, or packet1 had already expired"
+        elif sequence_number == 2:
+            gap_status = "gap_unavailable"
+            gap_reason = "packet_gap_ms could not be computed for this pair"
+
         if sequence_number == 2:
             packet_pair_states.pop(pair_id, None)
 
-        return packet_gap_ms
+        return packet_gap_ms, gap_status, gap_reason, observed_sequences
 
 
 @app.post("/v1/probe", response_model=ProbeResponse)
@@ -214,6 +234,9 @@ async def probe(request: Request):
     sequence_header = request.headers.get("x-probe-sequence")
     sequence_number = None
     packet_gap_ms = None
+    gap_status = None
+    gap_reason = None
+    observed_sequences = None
 
     if sequence_header is not None:
         try:
@@ -222,11 +245,14 @@ async def probe(request: Request):
             raise HTTPException(status_code=400, detail="X-Probe-Sequence must be an integer") from exc
 
     if probe_method == "packet-pair" and pair_id and sequence_number in (1, 2):
-        packet_gap_ms = await _resolve_packet_gap_ms(
+        packet_gap_ms, gap_status, gap_reason, observed_sequences = await _resolve_packet_gap_ms(
             pair_id=pair_id,
             sequence_number=sequence_number,
             arrival_ms=float(t_server_request_received),
         )
+    elif probe_method == "packet-pair":
+        gap_status = "invalid_packet_pair_headers"
+        gap_reason = "pair_id is missing or sequence_number is not 1 or 2"
 
     t1_ms = time.time() * 1000.0
 
@@ -238,6 +264,9 @@ async def probe(request: Request):
         pair_id=pair_id,
         sequence_number=sequence_number,
         packet_gap_ms=packet_gap_ms,
+        gap_status=gap_status,
+        gap_reason=gap_reason,
+        observed_sequences=observed_sequences,
         server_e2e_ms=t1_ms - t_process_start,
         t_server_request_received=float(t_server_request_received),
         t_server_response_done=float(t1_ms),
