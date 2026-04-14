@@ -22,6 +22,7 @@ from torchvision.ops import nms
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from demo.inference_on_a_image import load_model, get_grounding_output, plot_boxes_to_image
+from server.udp_echo_server import start_udp_echo_server
 
 CONFIG_PATH = Path("groundingdino/config/GroundingDINO_SwinT_OGC.py")
 CHECKPOINT_PATH = Path("weights/groundingdino_swint_ogc.pth")
@@ -128,6 +129,9 @@ class ModelManager:
 model_manager = ModelManager()
 app = FastAPI(title="GroundingDINO Inference Service")
 PACKET_PAIR_STATE_TTL_MS = 10_000.0
+UDP_ECHO_HOST = "0.0.0.0"
+UDP_ECHO_PORT = 9999
+udp_echo_transport = None
 
 
 class PacketPairState:
@@ -155,6 +159,23 @@ class E2ETimerMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(E2ETimerMiddleware)
+
+
+@app.on_event("startup")
+async def startup_event():
+    global udp_echo_transport
+    udp_echo_transport = await start_udp_echo_server(
+        host=UDP_ECHO_HOST,
+        port=UDP_ECHO_PORT,
+    )
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    global udp_echo_transport
+    if udp_echo_transport is not None:
+        udp_echo_transport.close()
+        udp_echo_transport = None
 
 # ---------- Main endpoint ----------
 def _parse_optional_json_list(name: str, raw: Optional[str]) -> Optional[List]:
