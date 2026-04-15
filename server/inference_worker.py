@@ -1,4 +1,3 @@
-import asyncio
 import base64
 import io
 import json
@@ -55,21 +54,6 @@ class DetectResponse(BaseModel):
     device: str
     results: List[DetectionResult]
     metrics: Optional[Metrics] = None
-
-
-class ProbeResponse(BaseModel):
-    ok: bool
-    bytes_received: int
-    content_type: Optional[str] = None
-    probe_method: Optional[str] = None
-    pair_id: Optional[str] = None
-    pair_status: Optional[str] = None
-    arrival_index: Optional[int] = None
-    pair_observed_count: Optional[int] = None
-    packet_gap_ms: Optional[float] = None
-    server_e2e_ms: float
-    t_server_request_received: float
-    t_server_response_done: float
 
 # ---------- Preprocessing & helpers ----------
 transform = T.Compose(
@@ -128,24 +112,9 @@ class ModelManager:
 
 model_manager = ModelManager()
 app = FastAPI(title="GroundingDINO Inference Service")
-PACKET_PAIR_STATE_TTL_MS = 10_000.0
 UDP_ECHO_HOST = "0.0.0.0"
 UDP_ECHO_PORT = 9999
 udp_echo_transport = None
-
-
-class PacketPairState:
-    def __init__(self):
-        now_ms = time.time() * 1000.0
-        self.first_arrival_perf_ns = None
-        self.first_arrival_epoch_ms = None
-        self.arrival_count = 0
-        self.created_at_ms = now_ms
-        self.last_updated_ms = now_ms
-
-
-packet_pair_states = {}
-packet_pair_lock = asyncio.Lock()
 
 
 class E2ETimerMiddleware(BaseHTTPMiddleware):
@@ -195,82 +164,6 @@ def _parse_optional_json_list(name: str, raw: Optional[str]) -> Optional[List]:
         # treat empty list as not provided
         return None
     return val
-
-
-def _cleanup_stale_packet_pair_states(now_ms: float):
-    stale_pair_ids = [
-        pair_id
-        for pair_id, state in packet_pair_states.items()
-        if (now_ms - state.last_updated_ms) > PACKET_PAIR_STATE_TTL_MS
-    ]
-    for pair_id in stale_pair_ids:
-        packet_pair_states.pop(pair_id, None)
-
-
-async def _resolve_packet_gap_ms(pair_id: str, arrival_ms: float, arrival_perf_ns: int):
-    async with packet_pair_lock:
-        _cleanup_stale_packet_pair_states(arrival_ms)
-        state = packet_pair_states.get(pair_id)
-        if state is None:
-            state = PacketPairState()
-            packet_pair_states[pair_id] = state
-
-        state.last_updated_ms = arrival_ms
-        state.arrival_count += 1
-        arrival_index = state.arrival_count
-
-        if state.first_arrival_perf_ns is None:
-            state.first_arrival_perf_ns = arrival_perf_ns
-            state.first_arrival_epoch_ms = arrival_ms
-            return None, "first_arrival", arrival_index, state.arrival_count
-
-        packet_gap_ms = max((arrival_perf_ns - state.first_arrival_perf_ns) / 1_000_000.0, 0.0)
-        pair_observed_count = state.arrival_count
-
-        if arrival_index >= 2:
-            packet_pair_states.pop(pair_id, None)
-
-        return packet_gap_ms, "second_arrival", arrival_index, pair_observed_count
-
-
-@app.post("/v1/probe", response_model=ProbeResponse)
-async def probe(request: Request):
-    t_process_start = time.time() * 1000.0
-    body = await request.body()
-    t_server_request_received = getattr(request.state, "t_server_request_received", t_process_start)
-    t_server_request_received_perf_ns = time.perf_counter_ns()
-    probe_method = request.headers.get("x-probe-method")
-    pair_id = request.headers.get("x-probe-pair-id")
-    pair_status = None
-    arrival_index = None
-    pair_observed_count = None
-    packet_gap_ms = None
-
-    if probe_method == "packet-pair" and pair_id:
-        packet_gap_ms, pair_status, arrival_index, pair_observed_count = await _resolve_packet_gap_ms(
-            pair_id=pair_id,
-            arrival_ms=float(t_server_request_received),
-            arrival_perf_ns=t_server_request_received_perf_ns,
-        )
-    elif probe_method == "packet-pair":
-        pair_status = "invalid_packet_pair_headers"
-
-    t1_ms = time.time() * 1000.0
-
-    return ProbeResponse(
-        ok=True,
-        bytes_received=len(body),
-        content_type=request.headers.get("content-type"),
-        probe_method=probe_method,
-        pair_id=pair_id,
-        pair_status=pair_status,
-        arrival_index=arrival_index,
-        pair_observed_count=pair_observed_count,
-        packet_gap_ms=packet_gap_ms,
-        server_e2e_ms=t1_ms - t_process_start,
-        t_server_request_received=float(t_server_request_received),
-        t_server_response_done=float(t1_ms),
-    )
 
 
 @app.post("/v1/detect", response_model=DetectResponse)
