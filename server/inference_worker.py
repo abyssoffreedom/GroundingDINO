@@ -43,8 +43,7 @@ class DetectionResult(BaseModel):
     visualization_b64: Optional[str] = None
 
 class Metrics(BaseModel):
-    forward_ms: float
-    server_e2e_ms: float
+    server_processing_ms: float
     t_server_request_received: float
     t_server_response_done: float
 
@@ -208,7 +207,6 @@ async def detect(
     )
 
     results = []
-    forward_ms_total = 0.0
 
     for idx, upload in enumerate(images[: params.max_detections]):
         data = await upload.read()
@@ -217,11 +215,6 @@ async def detect(
 
         # choose text_threshold depending on whether token_spans provided
         text_threshold_to_use = None if token_spans is not None else params.text_threshold
-
-        # Forward timing (GPU requires synchronize for accurate measurement)
-        if device == "cuda":
-            torch.cuda.synchronize()
-        t_fwd0 = time.perf_counter()
 
         with torch.autocast(device_type=device, enabled=(device == "cuda")):
             boxes, phrases = get_grounding_output(
@@ -234,10 +227,6 @@ async def detect(
                 cpu_only=(device == "cpu"),
                 token_spans=token_spans,
             )
-        if device == "cuda":
-            torch.cuda.synchronize()
-        t_fwd1 = time.perf_counter()
-        forward_ms_total += (t_fwd1 - t_fwd0) * 1000.0
         scores = [float(p[p.rfind("(")+1 : p.rfind(")")]) if "(" in p else 0.0 for p in phrases]
         phrases = [p.split("(")[0] if "(" in p else p for p in phrases]
 
@@ -277,11 +266,10 @@ async def detect(
     # Compose metrics in body using request.state timestamps from middleware
     t_server_request_received = getattr(request.state, "t_server_request_received", None)
     t1_ms = time.time() * 1000.0
-    server_e2e_ms = t1_ms - t_process_start
+    server_processing_ms = t1_ms - t_process_start
 
     metrics = Metrics(
-        forward_ms=forward_ms_total,
-        server_e2e_ms=server_e2e_ms,
+        server_processing_ms=server_processing_ms,
         t_server_request_received=float(t_server_request_received) if t_server_request_received else float(t_process_start),
         t_server_response_done=float(t1_ms),
     )

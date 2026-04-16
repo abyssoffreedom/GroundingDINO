@@ -25,8 +25,7 @@
     }
   ],
   "metrics": {
-    "forward_ms": 123.4,
-    "server_e2e_ms": 180.7,
+    "server_processing_ms": 180.7,
     "t_server_request_received": 1710000000000.0,
     "t_server_response_done": 1710000000180.7
   }
@@ -39,4 +38,4 @@ results 顺序与请求中上传图片顺序一致。
 说明：
 1. boxes: 归一化坐标 [xmin, ymin, xmax, ymax]，范围 0-1，适用于客户端渲染。
 2. boxes_coco: 像素坐标 [xmin, ymin, width, height]，适用于 COCO 指标评测。
-3. 顶层 forward_ms 已移除，请使用 metrics.forward_ms。
+3. 服务端聚合耗时使用 metrics.server_processing_ms，表示请求解码、预处理、推理、后处理和 JSON 打包的总时间。
