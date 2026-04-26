@@ -1,6 +1,9 @@
 import base64
+import asyncio
 import io
 import json
+import os
+import subprocess
 from pathlib import Path
 from typing import List, Optional
 
@@ -114,6 +117,48 @@ app = FastAPI(title="GroundingDINO Inference Service")
 UDP_ECHO_HOST = "0.0.0.0"
 UDP_ECHO_PORT = 9999
 udp_echo_transport = None
+udp_echo_process = None
+
+
+def _env_flag_enabled(name: str, default: bool = True) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() not in {"0", "false", "no", "off"}
+
+
+def _winsock_udp_server_executable() -> Path:
+    return Path(__file__).with_name("winsock_timestamp_udp_server.exe")
+
+
+def _make_winsock_udp_server_command() -> Optional[List[str]]:
+    if os.name != "nt":
+        return None
+
+    if not _env_flag_enabled("NETWORK_PROBE_USE_WINSOCK_TIMESTAMP", default=True):
+        return None
+
+    executable = _winsock_udp_server_executable()
+    if not executable.exists():
+        return None
+
+    command = [
+        str(executable),
+        "--host",
+        UDP_ECHO_HOST,
+        "--port",
+        str(UDP_ECHO_PORT),
+    ]
+
+    min_pair_gap_us = os.environ.get("NETWORK_PROBE_MIN_PAIR_GAP_US")
+    if min_pair_gap_us:
+        command.extend(["--min-pair-gap-us", min_pair_gap_us])
+
+    min_valid_pairs = os.environ.get("NETWORK_PROBE_MIN_VALID_PAIRS")
+    if min_valid_pairs:
+        command.extend(["--min-valid-pairs", min_valid_pairs])
+
+    return command
 
 
 class E2ETimerMiddleware(BaseHTTPMiddleware):
@@ -131,7 +176,27 @@ app.add_middleware(E2ETimerMiddleware)
 
 @app.on_event("startup")
 async def startup_event():
-    global udp_echo_transport
+    global udp_echo_transport, udp_echo_process
+    winsock_command = _make_winsock_udp_server_command()
+    if winsock_command is not None:
+        udp_echo_process = subprocess.Popen(
+            winsock_command,
+            cwd=str(Path(__file__).resolve().parents[1]),
+        )
+        await asyncio.sleep(0.2)
+        if udp_echo_process.poll() is None:
+            print(
+                "[NetworkProbe] started Winsock timestamp UDP server: "
+                + " ".join(winsock_command)
+            )
+            return
+
+        print(
+            "[NetworkProbe] Winsock timestamp UDP server exited during startup; "
+            "falling back to Python UDP server."
+        )
+        udp_echo_process = None
+
     udp_echo_transport = await start_udp_echo_server(
         host=UDP_ECHO_HOST,
         port=UDP_ECHO_PORT,
@@ -140,7 +205,16 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    global udp_echo_transport
+    global udp_echo_transport, udp_echo_process
+    if udp_echo_process is not None:
+        udp_echo_process.terminate()
+        try:
+            udp_echo_process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            udp_echo_process.kill()
+            udp_echo_process.wait(timeout=2)
+        udp_echo_process = None
+
     if udp_echo_transport is not None:
         udp_echo_transport.close()
         udp_echo_transport = None
