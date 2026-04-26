@@ -97,6 +97,8 @@ $env:NETWORK_PROBE_USE_WINSOCK_TIMESTAMP="1"
 $env:NETWORK_PROBE_MIN_PAIR_GAP_US="0"
 $env:NETWORK_PROBE_MIN_VALID_PAIRS="1"
 $env:NETWORK_PROBE_TIMESTAMP_SOURCE="auto"
+$env:NETWORK_PROBE_TRAIN_GAP_AGGREGATION="mean"
+$env:NETWORK_PROBE_HIGH_PRIORITY="0"
 
 uvicorn server.inference_worker:app --host 0.0.0.0 --port 8000
 ```
@@ -122,6 +124,8 @@ $env:NETWORK_PROBE_USE_WINSOCK_TIMESTAMP="1"
 $env:NETWORK_PROBE_MIN_PAIR_GAP_US="50"
 $env:NETWORK_PROBE_MIN_VALID_PAIRS="15"
 $env:NETWORK_PROBE_TIMESTAMP_SOURCE="auto"
+$env:NETWORK_PROBE_TRAIN_GAP_AGGREGATION="mean"
+$env:NETWORK_PROBE_HIGH_PRIORITY="0"
 
 uvicorn server.inference_worker:app --host 0.0.0.0 --port 8000
 ```
@@ -174,6 +178,33 @@ Ignore SO_TIMESTAMP for WBest timing and use the helper's app-level QPC receive 
 This is not kernel timestamping, but it is useful when SO_TIMESTAMP returns identical timestamps for every packet pair.
 ```
 
+```text
+NETWORK_PROBE_TRAIN_GAP_AGGREGATION
+Default: mean.
+Controls how packet-train receive gaps are aggregated for R.
+
+mean
+Use the original arithmetic mean of all positive train gaps.
+
+trimmed_mean
+Sort train gaps and remove both tails before averaging. This is useful when app-level receive timestamps contain a few large scheduler outliers and a few tiny socket-buffer drain gaps.
+
+median
+Use the median train gap. This is very robust but can overestimate R when many small drain gaps are present.
+```
+
+```text
+NETWORK_PROBE_TRAIN_GAP_TRIM_RATIO
+Default: 0.10.
+Used only by trimmed_mean. With 29 train gaps and 0.10, the helper trims the 2 smallest and 2 largest gaps before averaging.
+```
+
+```text
+NETWORK_PROBE_HIGH_PRIORITY
+Default: 0.
+Set to 1 to run the Winsock helper process as HIGH_PRIORITY_CLASS and its receive thread as THREAD_PRIORITY_HIGHEST. This reduces app-level timestamp scheduler stalls, but it cannot replace kernel/NIC timestamps.
+```
+
 Examples:
 
 ```powershell
@@ -189,6 +220,18 @@ $env:NETWORK_PROBE_MIN_VALID_PAIRS="15"
 $env:NETWORK_PROBE_TIMESTAMP_SOURCE="app"
 ```
 
+Recommended app-level timestamp configuration when the NIC does not support kernel timestamps:
+
+```powershell
+$env:NETWORK_PROBE_USE_WINSOCK_TIMESTAMP="1"
+$env:NETWORK_PROBE_TIMESTAMP_SOURCE="app"
+$env:NETWORK_PROBE_TRAIN_GAP_AGGREGATION="trimmed_mean"
+$env:NETWORK_PROBE_TRAIN_GAP_TRIM_RATIO="0.10"
+$env:NETWORK_PROBE_HIGH_PRIORITY="1"
+$env:NETWORK_PROBE_MIN_PAIR_GAP_US="0"
+$env:NETWORK_PROBE_MIN_VALID_PAIRS="1"
+```
+
 ## 8. Validation Logs
 
 After the app performs probing, inspect lines like:
@@ -200,7 +243,7 @@ After the app performs probing, inspect lines like:
 Packet train diagnostics are also printed:
 
 ```text
-[WBest][Winsock][Train][Summary] round=... payload_bytes=1400 received_train=30/30 Ce=...Mbps R=...Mbps gap_count=29 gap_min=...us gap_median=...us gap_mean=...us gap_p90=...us gap_max=...us timestamp_source=...
+[WBest][Winsock][Train][Summary] round=... payload_bytes=1400 received_train=30/30 Ce=...Mbps R=...Mbps aggregation=trimmed_mean trim_ratio=0.10 gap_count=29 gap_min=...us gap_median=...us gap_mean=...us gap_calc=...us gap_p90=...us gap_max=...us timestamp_source=...
 [WBest][Winsock][Train][Detail] round=... gaps=1->2:...us,2->3:...us,...
 ```
 
@@ -255,6 +298,7 @@ Should be 0. If not, packet matching or packet delivery is broken.
 Train gap mean vs median
 If train gap median is close to the target send gap but train gap mean is much larger, a few large receive gaps are pulling R down.
 If client actual_send_gap_mean is already much larger than send_gap, the client pacing path cannot send at the target Ce rate.
+If using trimmed_mean, R is calculated from gap_calc, while gap_mean remains the raw arithmetic mean for diagnostics.
 ```
 
 ## 9. Interpreting Results

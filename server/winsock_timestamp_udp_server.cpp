@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <cmath>
@@ -61,6 +62,12 @@ enum class TimestampSource {
     App,
 };
 
+enum class TrainGapAggregation {
+    Mean,
+    TrimmedMean,
+    Median,
+};
+
 struct TimestampingConfigWire {
     ULONG Flags;
     USHORT TxTimestampsBuffered;
@@ -73,6 +80,9 @@ struct ProgramOptions {
     double minPairGapUs = 0.0;
     int minValidPairs = 1;
     TimestampSource timestampSource = TimestampSource::Auto;
+    TrainGapAggregation trainGapAggregation = TrainGapAggregation::Mean;
+    double trainGapTrimRatio = 0.10;
+    bool highPriority = false;
 };
 
 struct RoundId {
@@ -177,6 +187,8 @@ struct FinalSummary {
     double availableBandwidthMbps = 0.0;
     double correctedAvailableBandwidthMbps = 0.0;
     double lossRate = 0.0;
+    uint64_t calculationTrainGapNs = 0;
+    double rawMeanTrainGapNs = 0.0;
     std::vector<int64_t> trainGapsNs;
     std::vector<uint32_t> trainGapStartSequences;
 };
@@ -253,6 +265,41 @@ TimestampSource parseTimestampSource(const std::string& value) {
     throw std::runtime_error("Invalid timestamp source. Use auto, socket, or app.");
 }
 
+std::string trainGapAggregationName(TrainGapAggregation aggregation) {
+    switch (aggregation) {
+    case TrainGapAggregation::Mean:
+        return "mean";
+    case TrainGapAggregation::TrimmedMean:
+        return "trimmed_mean";
+    case TrainGapAggregation::Median:
+        return "median";
+    }
+    return "unknown";
+}
+
+TrainGapAggregation parseTrainGapAggregation(const std::string& value) {
+    if (value == "mean") {
+        return TrainGapAggregation::Mean;
+    }
+    if (value == "trimmed_mean" || value == "trimmed-mean") {
+        return TrainGapAggregation::TrimmedMean;
+    }
+    if (value == "median") {
+        return TrainGapAggregation::Median;
+    }
+    throw std::runtime_error("Invalid train gap aggregation. Use mean, trimmed_mean, or median.");
+}
+
+bool parseBool(const std::string& value) {
+    if (value == "1" || value == "true" || value == "True" || value == "yes" || value == "on") {
+        return true;
+    }
+    if (value == "0" || value == "false" || value == "False" || value == "no" || value == "off") {
+        return false;
+    }
+    throw std::runtime_error("Invalid boolean value. Use 0 or 1.");
+}
+
 double median(std::vector<double> values) {
     if (values.empty()) {
         return 0.0;
@@ -303,6 +350,56 @@ std::string formatGapListUs(
     return stream.str();
 }
 
+long double meanNs(const std::vector<int64_t>& values) {
+    if (values.empty()) {
+        return 0.0L;
+    }
+
+    const long double sum = std::accumulate(
+        values.begin(),
+        values.end(),
+        0.0L,
+        [](long double partial, int64_t value) {
+            return partial + static_cast<long double>(value);
+        }
+    );
+    return sum / static_cast<long double>(values.size());
+}
+
+long double aggregateTrainGapNs(
+    std::vector<int64_t> values,
+    TrainGapAggregation aggregation,
+    double trimRatio
+) {
+    if (values.empty()) {
+        return 0.0L;
+    }
+
+    if (aggregation == TrainGapAggregation::Mean) {
+        return meanNs(values);
+    }
+
+    std::sort(values.begin(), values.end());
+
+    if (aggregation == TrainGapAggregation::Median) {
+        const size_t mid = values.size() / 2;
+        if ((values.size() % 2) == 0) {
+            return (static_cast<long double>(values[mid - 1]) + static_cast<long double>(values[mid])) / 2.0L;
+        }
+        return static_cast<long double>(values[mid]);
+    }
+
+    const double clampedTrimRatio = std::min(std::max(trimRatio, 0.0), 0.45);
+    const size_t trimCount = std::min(
+        static_cast<size_t>(std::floor(static_cast<double>(values.size()) * clampedTrimRatio)),
+        (values.size() - 1) / 2
+    );
+    const auto begin = values.begin() + static_cast<std::ptrdiff_t>(trimCount);
+    const auto end = values.end() - static_cast<std::ptrdiff_t>(trimCount);
+    const std::vector<int64_t> trimmed(begin, end);
+    return meanNs(trimmed);
+}
+
 int64_t qpcToNs(uint64_t qpcValue, int64_t qpcFrequency) {
     const long double ns =
         (static_cast<long double>(qpcValue) * 1'000'000'000.0L) /
@@ -327,7 +424,10 @@ bool parseOptions(int argc, char** argv, ProgramOptions& options) {
                 << "Usage: winsock_timestamp_udp_server.exe "
                 << "[--host 0.0.0.0] [--port 9999] "
                 << "[--min-pair-gap-us 0] [--min-valid-pairs 1] "
-                << "[--timestamp-source auto|socket|app]\n";
+                << "[--timestamp-source auto|socket|app] "
+                << "[--train-gap-aggregation mean|trimmed_mean|median] "
+                << "[--train-gap-trim-ratio 0.10] "
+                << "[--high-priority 0|1]\n";
             return false;
         }
         if (arg == "--host" && i + 1 < argc) {
@@ -360,9 +460,44 @@ bool parseOptions(int argc, char** argv, ProgramOptions& options) {
             options.timestampSource = parseTimestampSource(argv[++i]);
             continue;
         }
+        if (arg == "--train-gap-aggregation" && i + 1 < argc) {
+            options.trainGapAggregation = parseTrainGapAggregation(argv[++i]);
+            continue;
+        }
+        if (arg == "--train-gap-trim-ratio" && i + 1 < argc) {
+            options.trainGapTrimRatio = std::stod(argv[++i]);
+            if (options.trainGapTrimRatio < 0.0 || options.trainGapTrimRatio >= 0.5) {
+                throw std::runtime_error("Invalid train gap trim ratio. Use [0, 0.5).");
+            }
+            continue;
+        }
+        if (arg == "--high-priority" && i + 1 < argc) {
+            options.highPriority = parseBool(argv[++i]);
+            continue;
+        }
         throw std::runtime_error("Unknown or incomplete argument: " + arg);
     }
     return true;
+}
+
+void configureProcessPriority(bool highPriority) {
+    if (!highPriority) {
+        return;
+    }
+
+    if (!SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS)) {
+        std::cerr
+            << "[WBest][Winsock] failed to set process priority error="
+            << GetLastError()
+            << '\n';
+    }
+
+    if (!SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST)) {
+        std::cerr
+            << "[WBest][Winsock] failed to set thread priority error="
+            << GetLastError()
+            << '\n';
+    }
 }
 
 SOCKET makeBoundSocket(const ProgramOptions& options) {
@@ -867,18 +1002,21 @@ private:
             return false;
         }
 
-        long double gapSum = 0.0;
-        for (const int64_t gapNs : gapsNs) {
-            gapSum += static_cast<long double>(gapNs);
-        }
-        const long double meanGapNs = gapSum / static_cast<long double>(gapsNs.size());
-        const double meanGapSeconds = static_cast<double>(meanGapNs / 1'000'000'000.0L);
+        const long double rawMeanGapNs = meanNs(gapsNs);
+        const long double calculationGapNs = aggregateTrainGapNs(
+            gapsNs,
+            options_.trainGapAggregation,
+            options_.trainGapTrimRatio
+        );
+        const double calculationGapSeconds = static_cast<double>(calculationGapNs / 1'000'000'000.0L);
 
-        summary.meanTrainGapNs = static_cast<uint64_t>(meanGapNs + 0.5L);
+        summary.meanTrainGapNs = static_cast<uint64_t>(calculationGapNs + 0.5L);
+        summary.calculationTrainGapNs = summary.meanTrainGapNs;
+        summary.rawMeanTrainGapNs = static_cast<double>(rawMeanGapNs);
         summary.effectiveCapacityMbps = state.effectiveCapacityMbps;
         summary.achievableThroughputMbps =
             (static_cast<double>(state.packetSizeBytes) * 8.0) /
-            meanGapSeconds /
+            calculationGapSeconds /
             1'000'000.0;
         summary.achievableThroughputMbps =
             std::min(summary.achievableThroughputMbps, summary.effectiveCapacityMbps);
@@ -921,15 +1059,8 @@ private:
         }
 
         const auto minMax = std::minmax_element(gapsNs.begin(), gapsNs.end());
-        const long double sumNs = std::accumulate(
-            gapsNs.begin(),
-            gapsNs.end(),
-            0.0L,
-            [](long double partial, int64_t value) {
-                return partial + static_cast<long double>(value);
-            }
-        );
-        const double meanUs = static_cast<double>(sumNs / static_cast<long double>(gapsNs.size())) / 1000.0;
+        const double rawMeanUs = summary.rawMeanTrainGapNs / 1000.0;
+        const double calculationGapUs = static_cast<double>(summary.calculationTrainGapNs) / 1000.0;
 
         std::cout
             << "[WBest][Winsock][Train][Summary] "
@@ -938,10 +1069,13 @@ private:
             << "received_train=" << summary.receivedTrainPackets << '/' << summary.sentTrainPackets << ' '
             << "Ce=" << std::fixed << std::setprecision(2) << summary.effectiveCapacityMbps << "Mbps "
             << "R=" << std::fixed << std::setprecision(2) << summary.achievableThroughputMbps << "Mbps "
+            << "aggregation=" << trainGapAggregationName(options_.trainGapAggregation) << ' '
+            << "trim_ratio=" << options_.trainGapTrimRatio << ' '
             << "gap_count=" << gapsNs.size() << ' '
             << "gap_min=" << (static_cast<double>(*minMax.first) / 1000.0) << "us "
             << "gap_median=" << percentileNsToUs(gapsNs, 0.5) << "us "
-            << "gap_mean=" << meanUs << "us "
+            << "gap_mean=" << rawMeanUs << "us "
+            << "gap_calc=" << calculationGapUs << "us "
             << "gap_p90=" << percentileNsToUs(gapsNs, 0.9) << "us "
             << "gap_max=" << (static_cast<double>(*minMax.second) / 1000.0) << "us "
             << "timestamp_source=" << timestampSourceName(options_.timestampSource)
@@ -1080,6 +1214,8 @@ int main(int argc, char** argv) {
         return 2;
     }
 
+    configureProcessPriority(options.highPriority);
+
     WSADATA wsaData{};
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
         std::cerr << "WSAStartup failed\n";
@@ -1105,6 +1241,9 @@ int main(int argc, char** argv) {
             << " timestamp_source=" << timestampSourceName(options.timestampSource)
             << " min_pair_gap_us=" << options.minPairGapUs
             << " min_valid_pairs=" << options.minValidPairs
+            << " train_gap_aggregation=" << trainGapAggregationName(options.trainGapAggregation)
+            << " train_gap_trim_ratio=" << options.trainGapTrimRatio
+            << " high_priority=" << (options.highPriority ? 1 : 0)
             << '\n';
 
         WBestServer server(sock, options, frequency.QuadPart);
