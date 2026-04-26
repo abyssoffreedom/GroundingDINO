@@ -494,8 +494,8 @@ def main() -> int:
     parser.add_argument(
         "--packet-bytes",
         type=int,
-        default=1500,
-        help="UDP payload bytes used by the WBest probe, default: 1500",
+        default=1400,
+        help="UDP payload bytes used by the WBest probe, default: 1400",
     )
     parser.add_argument(
         "--summary-only",
