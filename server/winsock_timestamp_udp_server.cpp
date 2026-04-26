@@ -7,8 +7,6 @@
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include <mswsock.h>
-#include <mstcpip.h>
 #include <windows.h>
 
 #include <algorithm>
@@ -30,18 +28,6 @@
 
 #pragma comment(lib, "Ws2_32.lib")
 
-#ifndef SIO_TIMESTAMPING
-#define SIO_TIMESTAMPING _WSAIOW(IOC_VENDOR, 235)
-#endif
-
-#ifndef TIMESTAMPING_FLAG_RX
-#define TIMESTAMPING_FLAG_RX 0x1
-#endif
-
-#ifndef SO_TIMESTAMP
-#define SO_TIMESTAMP 0x300A
-#endif
-
 namespace {
 
 constexpr uint8_t kLatencyMessageType = 1;
@@ -56,22 +42,10 @@ constexpr double kSuspiciousCiLowMbps = 300.0;
 constexpr double kSuspiciousCiHighMbps = 1000.0;
 constexpr size_t kMaxDatagramBytes = 4096;
 
-enum class TimestampSource {
-    Auto,
-    Socket,
-    App,
-};
-
 enum class TrainGapAggregation {
     Mean,
     TrimmedMean,
     Median,
-};
-
-struct TimestampingConfigWire {
-    ULONG Flags;
-    USHORT TxTimestampsBuffered;
-    USHORT Reserved;
 };
 
 struct ProgramOptions {
@@ -79,7 +53,6 @@ struct ProgramOptions {
     uint16_t port = 9999;
     double minPairGapUs = 0.0;
     int minValidPairs = 1;
-    TimestampSource timestampSource = TimestampSource::Auto;
     TrainGapAggregation trainGapAggregation = TrainGapAggregation::Mean;
     double trainGapTrimRatio = 0.10;
     bool highPriority = false;
@@ -108,21 +81,14 @@ struct PairRecord {
     bool hasSeq2 = false;
     bool hasRecv1 = false;
     bool hasRecv2 = false;
-    bool recv1Timestamped = false;
-    bool recv2Timestamped = false;
     uint32_t seq1 = 0;
     uint32_t seq2 = 0;
     int64_t recv1Ns = 0;
     int64_t recv2Ns = 0;
-    uint64_t rawSocketTimestamp1 = 0;
-    uint64_t rawSocketTimestamp2 = 0;
-    int64_t appReceiveNs1 = 0;
-    int64_t appReceiveNs2 = 0;
 };
 
 struct TrainRecord {
     int64_t recvNs = 0;
-    bool timestamped = false;
 };
 
 struct RoundState {
@@ -141,9 +107,6 @@ struct ReceivedDatagram {
     sockaddr_storage remote{};
     int remoteLength = 0;
     int64_t arrivalNs = 0;
-    bool hasSocketTimestamp = false;
-    uint64_t rawSocketTimestamp = 0;
-    int64_t appReceiveNs = 0;
 };
 
 struct PairDetail {
@@ -156,8 +119,6 @@ struct PairDetail {
     bool nonPositiveGap = false;
     bool gapUnder50Us = false;
     bool ciInSuspiciousRange = false;
-    bool usedTimestamp = false;
-    bool fallbackTimestamp = false;
     int64_t gapNs = 0;
     double gapUs = 0.0;
     double ciMbps = 0.0;
@@ -174,8 +135,6 @@ struct PairAnalysis {
     int missingPairCount = 0;
     int reorderedPairCount = 0;
     int seqMismatchCount = 0;
-    int socketTimestampedPairCount = 0;
-    int fallbackTimestampPairCount = 0;
 };
 
 struct FinalSummary {
@@ -238,31 +197,6 @@ std::string formatRoundId(const RoundId& roundId) {
         }
     }
     return stream.str();
-}
-
-std::string timestampSourceName(TimestampSource source) {
-    switch (source) {
-    case TimestampSource::Auto:
-        return "auto";
-    case TimestampSource::Socket:
-        return "socket";
-    case TimestampSource::App:
-        return "app";
-    }
-    return "unknown";
-}
-
-TimestampSource parseTimestampSource(const std::string& value) {
-    if (value == "auto") {
-        return TimestampSource::Auto;
-    }
-    if (value == "socket") {
-        return TimestampSource::Socket;
-    }
-    if (value == "app") {
-        return TimestampSource::App;
-    }
-    throw std::runtime_error("Invalid timestamp source. Use auto, socket, or app.");
 }
 
 std::string trainGapAggregationName(TrainGapAggregation aggregation) {
@@ -424,7 +358,6 @@ bool parseOptions(int argc, char** argv, ProgramOptions& options) {
                 << "Usage: winsock_timestamp_udp_server.exe "
                 << "[--host 0.0.0.0] [--port 9999] "
                 << "[--min-pair-gap-us 0] [--min-valid-pairs 1] "
-                << "[--timestamp-source auto|socket|app] "
                 << "[--train-gap-aggregation mean|trimmed_mean|median] "
                 << "[--train-gap-trim-ratio 0.10] "
                 << "[--high-priority 0|1]\n";
@@ -454,10 +387,6 @@ bool parseOptions(int argc, char** argv, ProgramOptions& options) {
             if (options.minValidPairs < 1) {
                 throw std::runtime_error("Invalid minimum valid pair count");
             }
-            continue;
-        }
-        if (arg == "--timestamp-source" && i + 1 < argc) {
-            options.timestampSource = parseTimestampSource(argv[++i]);
             continue;
         }
         if (arg == "--train-gap-aggregation" && i + 1 < argc) {
@@ -534,123 +463,33 @@ SOCKET makeBoundSocket(const ProgramOptions& options) {
     return sock;
 }
 
-LPFN_WSARECVMSG getRecvMsgFunction(SOCKET sock) {
-    GUID recvMsgGuid = WSAID_WSARECVMSG;
-    LPFN_WSARECVMSG recvMsg = nullptr;
-    DWORD bytesReturned = 0;
-    const int result = WSAIoctl(
-        sock,
-        SIO_GET_EXTENSION_FUNCTION_POINTER,
-        &recvMsgGuid,
-        sizeof(recvMsgGuid),
-        &recvMsg,
-        sizeof(recvMsg),
-        &bytesReturned,
-        nullptr,
-        nullptr
-    );
-    if (result == SOCKET_ERROR || recvMsg == nullptr) {
-        throw std::runtime_error("SIO_GET_EXTENSION_FUNCTION_POINTER failed: " + std::to_string(WSAGetLastError()));
-    }
-    return recvMsg;
-}
-
-bool enableReceiveTimestamping(SOCKET sock) {
-    TimestampingConfigWire config{};
-    config.Flags = TIMESTAMPING_FLAG_RX;
-    DWORD bytesReturned = 0;
-    const int result = WSAIoctl(
-        sock,
-        SIO_TIMESTAMPING,
-        &config,
-        sizeof(config),
-        nullptr,
-        0,
-        &bytesReturned,
-        nullptr,
-        nullptr
-    );
-    if (result == SOCKET_ERROR) {
-        std::cerr
-            << "[WBest][Winsock] SIO_TIMESTAMPING failed error="
-            << WSAGetLastError()
-            << "; falling back to app-level QPC receive timestamps.\n";
-        return false;
-    }
-    std::cout << "[WBest][Winsock] SIO_TIMESTAMPING RX enabled.\n";
-    return true;
-}
-
-ReceivedDatagram receiveDatagram(
-    SOCKET sock,
-    LPFN_WSARECVMSG recvMsg,
-    int64_t qpcFrequency,
-    TimestampSource timestampSource
-) {
+ReceivedDatagram receiveDatagram(SOCKET sock, int64_t qpcFrequency) {
     ReceivedDatagram received;
     received.data.resize(kMaxDatagramBytes);
-    std::array<char, 128> control{};
-
-    WSABUF dataBuf{};
-    dataBuf.buf = reinterpret_cast<char*>(received.data.data());
-    dataBuf.len = static_cast<ULONG>(received.data.size());
-
-    WSABUF controlBuf{};
-    controlBuf.buf = control.data();
-    controlBuf.len = static_cast<ULONG>(control.size());
-
     received.remoteLength = sizeof(received.remote);
 
-    WSAMSG message{};
-    message.name = reinterpret_cast<sockaddr*>(&received.remote);
-    message.namelen = received.remoteLength;
-    message.lpBuffers = &dataBuf;
-    message.dwBufferCount = 1;
-    message.Control = controlBuf;
-    message.dwFlags = 0;
-
-    DWORD bytesReceived = 0;
-    const int result = recvMsg(sock, &message, &bytesReceived, nullptr, nullptr);
-    const int64_t appReceiveNs = currentQpcNs(qpcFrequency);
-    if (result == SOCKET_ERROR) {
-        throw std::runtime_error("WSARecvMsg failed: " + std::to_string(WSAGetLastError()));
+    const int bytesReceived = recvfrom(
+        sock,
+        reinterpret_cast<char*>(received.data.data()),
+        static_cast<int>(received.data.size()),
+        0,
+        reinterpret_cast<sockaddr*>(&received.remote),
+        &received.remoteLength
+    );
+    received.arrivalNs = currentQpcNs(qpcFrequency);
+    if (bytesReceived == SOCKET_ERROR) {
+        throw std::runtime_error("recvfrom failed: " + std::to_string(WSAGetLastError()));
     }
 
-    received.remoteLength = message.namelen;
-    received.data.resize(bytesReceived);
-    received.arrivalNs = appReceiveNs;
-    received.appReceiveNs = appReceiveNs;
-
-    for (WSACMSGHDR* cmsg = WSA_CMSG_FIRSTHDR(&message);
-         cmsg != nullptr;
-         cmsg = WSA_CMSG_NXTHDR(&message, cmsg)) {
-        if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SO_TIMESTAMP) {
-            if (cmsg->cmsg_len >= WSA_CMSG_LEN(sizeof(uint64_t))) {
-                uint64_t socketTimestamp = 0;
-                std::memcpy(&socketTimestamp, WSA_CMSG_DATA(cmsg), sizeof(socketTimestamp));
-                received.rawSocketTimestamp = socketTimestamp;
-                if (socketTimestamp == 0) {
-                    std::cerr
-                        << "[WBest][Winsock] received SO_TIMESTAMP=0; "
-                        << "using app-level QPC receive timestamp for this datagram.\n";
-                    break;
-                }
-                if (timestampSource != TimestampSource::App) {
-                    received.arrivalNs = qpcToNs(socketTimestamp, qpcFrequency);
-                    received.hasSocketTimestamp = true;
-                }
-                break;
-            }
-        }
-    }
+    received.data.resize(static_cast<size_t>(bytesReceived));
 
     return received;
 }
 
 class WBestServer {
 public:
-    WBestServer(SOCKET sock, ProgramOptions options, int64_t qpcFrequency)
-        : sock_(sock), options_(std::move(options)), qpcFrequency_(qpcFrequency) {}
+    WBestServer(SOCKET sock, ProgramOptions options)
+        : sock_(sock), options_(std::move(options)) {}
 
     void handleDatagram(const ReceivedDatagram& datagram) {
         if (datagram.data.empty()) {
@@ -719,10 +558,7 @@ private:
                 sequence,
                 indexInGroup,
                 static_cast<int>(datagram.data.size()),
-                datagram.arrivalNs,
-                datagram.hasSocketTimestamp,
-                datagram.rawSocketTimestamp,
-                datagram.appReceiveNs
+                datagram.arrivalNs
             );
             return;
         }
@@ -738,8 +574,7 @@ private:
                 sequence,
                 totalCount,
                 static_cast<int>(datagram.data.size()),
-                datagram.arrivalNs,
-                datagram.hasSocketTimestamp
+                datagram.arrivalNs
             );
             return;
         }
@@ -765,10 +600,7 @@ private:
         uint32_t sequence,
         uint8_t indexInPair,
         int packetSizeBytes,
-        int64_t arrivalNs,
-        bool hasSocketTimestamp,
-        uint64_t rawSocketTimestamp,
-        int64_t appReceiveNs
+        int64_t arrivalNs
     ) {
         if (indexInPair != 1 && indexInPair != 2) {
             return;
@@ -784,17 +616,11 @@ private:
             record.hasRecv1 = true;
             record.seq1 = sequence;
             record.recv1Ns = arrivalNs;
-            record.recv1Timestamped = hasSocketTimestamp;
-            record.rawSocketTimestamp1 = rawSocketTimestamp;
-            record.appReceiveNs1 = appReceiveNs;
         } else {
             record.hasSeq2 = true;
             record.hasRecv2 = true;
             record.seq2 = sequence;
             record.recv2Ns = arrivalNs;
-            record.recv2Timestamped = hasSocketTimestamp;
-            record.rawSocketTimestamp2 = rawSocketTimestamp;
-            record.appReceiveNs2 = appReceiveNs;
         }
     }
 
@@ -835,15 +661,14 @@ private:
         uint32_t sequence,
         uint32_t packetCount,
         int packetSizeBytes,
-        int64_t arrivalNs,
-        bool hasSocketTimestamp
+        int64_t arrivalNs
     ) {
         RoundState& state = getOrCreateRoundState(roundId, arrivalNs);
         state.packetSizeBytes = std::max(state.packetSizeBytes, packetSizeBytes);
         state.expectedTrainPackets = std::max<int>(state.expectedTrainPackets, static_cast<int>(packetCount));
         state.lastUpdatedNs = arrivalNs;
         if (sequence > 0) {
-            state.trainRecords[sequence] = TrainRecord{arrivalNs, hasSocketTimestamp};
+            state.trainRecords[sequence] = TrainRecord{arrivalNs};
         }
     }
 
@@ -912,8 +737,6 @@ private:
             detail.expectedSeq2 = 2 * pairId;
             detail.record = record;
             detail.hasBoth = record.hasRecv1 && record.hasRecv2;
-            detail.usedTimestamp = detail.hasBoth && record.recv1Timestamped && record.recv2Timestamped;
-            detail.fallbackTimestamp = detail.hasBoth && (!record.recv1Timestamped || !record.recv2Timestamped);
 
             if (detail.hasBoth) {
                 detail.reordered = record.recv2Ns < record.recv1Ns;
@@ -955,12 +778,6 @@ private:
             }
             if (detail.ciInSuspiciousRange) {
                 ++analysis.ci300To1000Count;
-            }
-            if (detail.usedTimestamp) {
-                ++analysis.socketTimestampedPairCount;
-            }
-            if (detail.fallbackTimestamp) {
-                ++analysis.fallbackTimestampPairCount;
             }
             analysis.details.push_back(detail);
         }
@@ -1078,7 +895,7 @@ private:
             << "gap_calc=" << calculationGapUs << "us "
             << "gap_p90=" << percentileNsToUs(gapsNs, 0.9) << "us "
             << "gap_max=" << (static_cast<double>(*minMax.second) / 1000.0) << "us "
-            << "timestamp_source=" << timestampSourceName(options_.timestampSource)
+            << "timestamp_source=app_qpc"
             << '\n';
 
         std::cout
@@ -1112,10 +929,8 @@ private:
             << "missing=" << analysis.missingPairCount << ' '
             << "reordered=" << analysis.reorderedPairCount << ' '
             << "seq_mismatch=" << analysis.seqMismatchCount << ' '
-            << "socket_timestamped_pairs=" << analysis.socketTimestampedPairCount << ' '
-            << "fallback_timestamp_pairs=" << analysis.fallbackTimestampPairCount << ' '
             << "min_pair_gap_us=" << options_.minPairGapUs
-            << " timestamp_source=" << timestampSourceName(options_.timestampSource)
+            << " timestamp_source=app_qpc"
             << '\n';
 
         for (const PairDetail& detail : analysis.details) {
@@ -1138,10 +953,6 @@ private:
             if (!detail.hasBoth) {
                 flags.emplace_back("incomplete");
             }
-            if (detail.fallbackTimestamp) {
-                flags.emplace_back("fallback_timestamp");
-            }
-
             std::ostringstream flagStream;
             if (flags.empty()) {
                 flagStream << "ok";
@@ -1174,10 +985,7 @@ private:
                 std::cout << "Ci=n/a ";
             }
             std::cout
-                << "timestamped=(" << (detail.record.recv1Timestamped ? 1 : 0)
-                << ',' << (detail.record.recv2Timestamped ? 1 : 0) << ") "
-                << "raw_socket_ts=(" << detail.record.rawSocketTimestamp1
-                << ',' << detail.record.rawSocketTimestamp2 << ") "
+                << "timestamp_source=app_qpc "
                 << "flags=" << flagStream.str()
                 << '\n';
         }
@@ -1197,7 +1005,6 @@ private:
 
     SOCKET sock_;
     ProgramOptions options_;
-    int64_t qpcFrequency_;
     std::unordered_map<RoundId, RoundState, RoundIdHash> roundStates_;
 };
 
@@ -1231,14 +1038,11 @@ int main(int argc, char** argv) {
         }
 
         sock = makeBoundSocket(options);
-        LPFN_WSARECVMSG recvMsg = getRecvMsgFunction(sock);
-        const bool timestampingEnabled = enableReceiveTimestamping(sock);
 
         std::cout
             << "[WBest][Winsock] listening host=" << options.host
             << " port=" << options.port
-            << " timestamping_enabled=" << (timestampingEnabled ? 1 : 0)
-            << " timestamp_source=" << timestampSourceName(options.timestampSource)
+            << " timestamp_source=app_qpc"
             << " min_pair_gap_us=" << options.minPairGapUs
             << " min_valid_pairs=" << options.minValidPairs
             << " train_gap_aggregation=" << trainGapAggregationName(options.trainGapAggregation)
@@ -1246,14 +1050,9 @@ int main(int argc, char** argv) {
             << " high_priority=" << (options.highPriority ? 1 : 0)
             << '\n';
 
-        WBestServer server(sock, options, frequency.QuadPart);
+        WBestServer server(sock, options);
         while (true) {
-            ReceivedDatagram datagram = receiveDatagram(
-                sock,
-                recvMsg,
-                frequency.QuadPart,
-                options.timestampSource
-            );
+            ReceivedDatagram datagram = receiveDatagram(sock, frequency.QuadPart);
             server.handleDatagram(datagram);
         }
     } catch (const std::exception& error) {

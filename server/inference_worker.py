@@ -158,10 +158,6 @@ def _make_winsock_udp_server_command() -> Optional[List[str]]:
     if min_valid_pairs:
         command.extend(["--min-valid-pairs", min_valid_pairs])
 
-    timestamp_source = os.environ.get("NETWORK_PROBE_TIMESTAMP_SOURCE")
-    if timestamp_source:
-        command.extend(["--timestamp-source", timestamp_source])
-
     train_gap_aggregation = os.environ.get("NETWORK_PROBE_TRAIN_GAP_AGGREGATION")
     if train_gap_aggregation:
         command.extend(["--train-gap-aggregation", train_gap_aggregation])
@@ -202,13 +198,13 @@ async def startup_event():
         await asyncio.sleep(0.2)
         if udp_echo_process.poll() is None:
             print(
-                "[NetworkProbe] started Winsock timestamp UDP server: "
+                "[NetworkProbe] started Windows native UDP probe server: "
                 + " ".join(winsock_command)
             )
             return
 
         print(
-            "[NetworkProbe] Winsock timestamp UDP server exited during startup; "
+            "[NetworkProbe] Windows native UDP probe server exited during startup; "
             "falling back to Python UDP server."
         )
         udp_echo_process = None
