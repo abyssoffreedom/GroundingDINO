@@ -2,10 +2,14 @@ import asyncio
 import statistics
 import struct
 import time
+import uuid
 
 LATENCY_MESSAGE_TYPE = 1
 WBEST_MESSAGE_TYPE = 2
 WBEST_ROUND_STATE_TTL_NS = 10_000_000_000
+SUSPICIOUS_PAIR_GAP_US = 50.0
+SUSPICIOUS_CI_LOW_MBPS = 300.0
+SUSPICIOUS_CI_HIGH_MBPS = 1000.0
 
 LATENCY_REQUEST_STRUCT = struct.Struct("!BIQ")
 LATENCY_RESPONSE_STRUCT = struct.Struct("!BIQQ")
@@ -83,6 +87,7 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
             self._record_packet_pair(
                 round_id_bytes=round_id_bytes,
                 pair_id=group_id,
+                sequence=sequence,
                 index_in_pair=index_in_group,
                 packet_size_bytes=len(data),
                 arrival_perf_ns=arrival_perf_ns,
@@ -119,6 +124,7 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
         self,
         round_id_bytes: bytes,
         pair_id: int,
+        sequence: int,
         index_in_pair: int,
         packet_size_bytes: int,
         arrival_perf_ns: int,
@@ -130,7 +136,8 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
         state.packet_size_bytes = max(state.packet_size_bytes, packet_size_bytes)
         state.touch(arrival_perf_ns)
         pair_record = state.packet_pair_records.setdefault(pair_id, {})
-        pair_record[index_in_pair] = arrival_perf_ns
+        pair_record[f"seq{index_in_pair}"] = sequence
+        pair_record[f"recv{index_in_pair}"] = arrival_perf_ns
 
     def _respond_with_packet_pair_summary(self, message_type: int, round_id_bytes: bytes, addr):
         state = self.wbest_round_states.get(round_id_bytes)
@@ -142,6 +149,7 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
             state.touch(time.perf_counter_ns())
             effective_capacity_mbps, valid_pair_sample_count = self._compute_effective_capacity_mbps(state)
             success = effective_capacity_mbps is not None
+            self._log_packet_pair_analysis(round_id_bytes, state)
             if success:
                 state.effective_capacity_mbps = effective_capacity_mbps
                 state.valid_pair_sample_count = valid_pair_sample_count
@@ -236,24 +244,8 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
         self.wbest_round_states.pop(round_id_bytes, None)
 
     def _compute_effective_capacity_mbps(self, state: WBestRoundState):
-        if state.packet_size_bytes <= 0:
-            return None, 0
-
-        capacity_samples_mbps = []
-        for pair_record in state.packet_pair_records.values():
-            recv_time_1 = pair_record.get(1)
-            recv_time_2 = pair_record.get(2)
-            if recv_time_1 is None or recv_time_2 is None:
-                continue
-
-            gap_ns = recv_time_2 - recv_time_1
-            if gap_ns <= 0:
-                continue
-
-            gap_seconds = gap_ns / 1_000_000_000.0
-            capacity_mbps = (state.packet_size_bytes * 8.0) / gap_seconds / 1_000_000.0
-            capacity_samples_mbps.append(capacity_mbps)
-
+        analysis = self._build_packet_pair_analysis(state)
+        capacity_samples_mbps = analysis["capacity_samples_mbps"]
         if not capacity_samples_mbps:
             return None, 0
 
@@ -322,6 +314,141 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
             state = WBestRoundState(now_perf_ns)
             self.wbest_round_states[round_id_bytes] = state
         return state
+
+    def _build_packet_pair_analysis(self, state: WBestRoundState):
+        details = []
+        capacity_samples_mbps = []
+        pair_ids = sorted(state.packet_pair_records.keys())
+
+        for pair_id in pair_ids:
+            pair_record = state.packet_pair_records[pair_id]
+            expected_seq1 = (2 * pair_id) - 1
+            expected_seq2 = 2 * pair_id
+            seq1 = pair_record.get("seq1")
+            seq2 = pair_record.get("seq2")
+            recv_time_1 = pair_record.get("recv1")
+            recv_time_2 = pair_record.get("recv2")
+
+            has_both = recv_time_1 is not None and recv_time_2 is not None
+            reordered = has_both and recv_time_2 < recv_time_1
+            seq_mismatch = (
+                seq1 is not None
+                and seq2 is not None
+                and (seq1 != expected_seq1 or seq2 != expected_seq2)
+            )
+
+            gap_ns = None
+            gap_us = None
+            ci_mbps = None
+            if has_both:
+                gap_ns = recv_time_2 - recv_time_1
+                gap_us = gap_ns / 1_000.0
+                if gap_ns > 0:
+                    gap_seconds = gap_ns / 1_000_000_000.0
+                    ci_mbps = (state.packet_size_bytes * 8.0) / gap_seconds / 1_000_000.0
+                    capacity_samples_mbps.append(ci_mbps)
+
+            gap_under_50us = gap_us is not None and 0.0 < gap_us < SUSPICIOUS_PAIR_GAP_US
+            ci_in_suspicious_range = (
+                ci_mbps is not None
+                and SUSPICIOUS_CI_LOW_MBPS <= ci_mbps <= SUSPICIOUS_CI_HIGH_MBPS
+            )
+
+            details.append(
+                {
+                    "pair_id": pair_id,
+                    "expected_seq1": expected_seq1,
+                    "expected_seq2": expected_seq2,
+                    "seq1": seq1,
+                    "seq2": seq2,
+                    "recv_time_1": recv_time_1,
+                    "recv_time_2": recv_time_2,
+                    "has_both": has_both,
+                    "reordered": reordered,
+                    "seq_mismatch": seq_mismatch,
+                    "gap_ns": gap_ns,
+                    "gap_us": gap_us,
+                    "ci_mbps": ci_mbps,
+                    "gap_under_50us": gap_under_50us,
+                    "ci_in_suspicious_range": ci_in_suspicious_range,
+                }
+            )
+
+        return {
+            "details": details,
+            "capacity_samples_mbps": capacity_samples_mbps,
+            "gap_under_50us_count": sum(1 for detail in details if detail["gap_under_50us"]),
+            "ci_300_to_1000_count": sum(1 for detail in details if detail["ci_in_suspicious_range"]),
+            "missing_pair_count": sum(1 for detail in details if not detail["has_both"]),
+            "reordered_pair_count": sum(1 for detail in details if detail["reordered"]),
+            "seq_mismatch_count": sum(1 for detail in details if detail["seq_mismatch"]),
+        }
+
+    def _log_packet_pair_analysis(self, round_id_bytes: bytes, state: WBestRoundState):
+        analysis = self._build_packet_pair_analysis(state)
+        details = analysis["details"]
+        capacity_samples_mbps = analysis["capacity_samples_mbps"]
+        round_id = self._format_round_id(round_id_bytes)
+        ce_text = (
+            f"{statistics.median(capacity_samples_mbps):.2f}Mbps"
+            if capacity_samples_mbps
+            else "n/a"
+        )
+
+        print(
+            "[WBest][Pairs][Summary] "
+            f"round={round_id} "
+            f"payload_bytes={state.packet_size_bytes} "
+            f"valid_pairs={len(capacity_samples_mbps)}/{len(details)} "
+            f"Ce={ce_text} "
+            f"gap_lt_50us={analysis['gap_under_50us_count']} "
+            f"ci_300_1000={analysis['ci_300_to_1000_count']} "
+            f"missing={analysis['missing_pair_count']} "
+            f"reordered={analysis['reordered_pair_count']} "
+            f"seq_mismatch={analysis['seq_mismatch_count']}"
+        )
+
+        for detail in details:
+            gap_text = (
+                f"{detail['gap_us']:.2f}us"
+                if detail["gap_us"] is not None
+                else "n/a"
+            )
+            ci_text = (
+                f"{detail['ci_mbps']:.2f}Mbps"
+                if detail["ci_mbps"] is not None
+                else "n/a"
+            )
+
+            flags = []
+            if detail["gap_under_50us"]:
+                flags.append("gap_lt_50us")
+            if detail["ci_in_suspicious_range"]:
+                flags.append("ci_300_1000")
+            if detail["reordered"]:
+                flags.append("reordered")
+            if detail["seq_mismatch"]:
+                flags.append("seq_mismatch")
+            if not detail["has_both"]:
+                flags.append("incomplete")
+
+            flag_text = ",".join(flags) if flags else "ok"
+            print(
+                "[WBest][Pairs][Detail] "
+                f"round={round_id} "
+                f"pair={detail['pair_id']:02d} "
+                f"seq=({detail['seq1']},{detail['seq2']}) "
+                f"expected=({detail['expected_seq1']},{detail['expected_seq2']}) "
+                f"gap={gap_text} "
+                f"Ci={ci_text} "
+                f"flags={flag_text}"
+            )
+
+    def _format_round_id(self, round_id_bytes: bytes) -> str:
+        try:
+            return str(uuid.UUID(bytes=round_id_bytes))
+        except ValueError:
+            return round_id_bytes.hex()
 
     def _cleanup_stale_wbest_round_states(self, now_perf_ns: int):
         stale_round_ids = [
