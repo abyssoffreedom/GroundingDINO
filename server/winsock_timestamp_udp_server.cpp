@@ -32,10 +32,15 @@ namespace {
 
 constexpr uint8_t kLatencyMessageType = 1;
 constexpr uint8_t kWBestMessageType = 2;
+constexpr uint8_t kPathMonMessageType = 3;
 constexpr uint8_t kWBestStagePacketPair = 1;
 constexpr uint8_t kWBestStagePacketPairSummary = 2;
 constexpr uint8_t kWBestStagePacketTrain = 3;
 constexpr uint8_t kWBestStageFinalSummary = 4;
+constexpr uint8_t kPathMonStageJitterPacket = 1;
+constexpr uint8_t kPathMonStageJitterSummary = 2;
+constexpr uint8_t kPathMonStageBandwidthPacket = 3;
+constexpr uint8_t kPathMonStageBandwidthSummary = 4;
 constexpr int64_t kRoundStateTtlNs = 10'000'000'000LL;
 constexpr double kSuspiciousPairGapUs = 50.0;
 constexpr double kSuspiciousCiLowMbps = 300.0;
@@ -99,6 +104,15 @@ struct RoundState {
     bool hasEffectiveCapacity = false;
     double effectiveCapacityMbps = 0.0;
     int expectedTrainPackets = 0;
+    int64_t lastUpdatedNs = 0;
+};
+
+struct PathMonRoundState {
+    int packetSizeBytes = 0;
+    std::unordered_map<uint32_t, TrainRecord> jitterRecords;
+    std::unordered_map<uint32_t, TrainRecord> bandwidthRecords;
+    int expectedJitterPackets = 0;
+    int expectedBandwidthPackets = 0;
     int64_t lastUpdatedNs = 0;
 };
 
@@ -209,6 +223,17 @@ std::string trainGapAggregationName(TrainGapAggregation aggregation) {
         return "median";
     }
     return "unknown";
+}
+
+std::string pathMonStageName(uint8_t stage) {
+    switch (stage) {
+    case kPathMonStageJitterSummary:
+        return "jitter";
+    case kPathMonStageBandwidthSummary:
+        return "bandwidth";
+    default:
+        return "unknown";
+    }
 }
 
 TrainGapAggregation parseTrainGapAggregation(const std::string& value) {
@@ -504,6 +529,11 @@ public:
 
         if (messageType == kWBestMessageType) {
             handleWBest(datagram);
+            return;
+        }
+
+        if (messageType == kPathMonMessageType) {
+            handlePathMon(datagram);
         }
     }
 
@@ -584,12 +614,52 @@ private:
         }
     }
 
+    void handlePathMon(const ReceivedDatagram& datagram) {
+        if (datagram.data.size() < 31) {
+            return;
+        }
+
+        cleanupStalePathMonRoundStates(datagram.arrivalNs);
+
+        const uint8_t stage = datagram.data[1];
+        RoundId roundId{};
+        std::memcpy(roundId.bytes.data(), datagram.data.data() + 2, roundId.bytes.size());
+        const uint32_t sequence = readU32BE(datagram.data.data() + 18);
+        const uint32_t totalCount = readU32BE(datagram.data.data() + 26);
+
+        if (stage == kPathMonStageJitterPacket || stage == kPathMonStageBandwidthPacket) {
+            recordPathMonPacket(
+                roundId,
+                stage,
+                sequence,
+                totalCount,
+                static_cast<int>(datagram.data.size()),
+                datagram.arrivalNs
+            );
+            return;
+        }
+
+        if (stage == kPathMonStageJitterSummary || stage == kPathMonStageBandwidthSummary) {
+            respondWithPathMonSummary(roundId, stage, totalCount, datagram);
+        }
+    }
+
     RoundState& getOrCreateRoundState(const RoundId& roundId, int64_t nowNs) {
         auto iter = roundStates_.find(roundId);
         if (iter == roundStates_.end()) {
             RoundState state;
             state.lastUpdatedNs = nowNs;
             iter = roundStates_.emplace(roundId, std::move(state)).first;
+        }
+        return iter->second;
+    }
+
+    PathMonRoundState& getOrCreatePathMonRoundState(const RoundId& roundId, int64_t nowNs) {
+        auto iter = pathMonRoundStates_.find(roundId);
+        if (iter == pathMonRoundStates_.end()) {
+            PathMonRoundState state;
+            state.lastUpdatedNs = nowNs;
+            iter = pathMonRoundStates_.emplace(roundId, std::move(state)).first;
         }
         return iter->second;
     }
@@ -621,6 +691,120 @@ private:
             record.hasRecv2 = true;
             record.seq2 = sequence;
             record.recv2Ns = arrivalNs;
+        }
+    }
+
+    void recordPathMonPacket(
+        const RoundId& roundId,
+        uint8_t stage,
+        uint32_t sequence,
+        uint32_t packetCount,
+        int packetSizeBytes,
+        int64_t arrivalNs
+    ) {
+        if (sequence == 0) {
+            return;
+        }
+
+        PathMonRoundState& state = getOrCreatePathMonRoundState(roundId, arrivalNs);
+        state.packetSizeBytes = std::max(state.packetSizeBytes, packetSizeBytes);
+        state.lastUpdatedNs = arrivalNs;
+
+        if (stage == kPathMonStageJitterPacket) {
+            state.expectedJitterPackets =
+                std::max<int>(state.expectedJitterPackets, static_cast<int>(packetCount));
+            state.jitterRecords[sequence] = TrainRecord{arrivalNs};
+            return;
+        }
+
+        if (stage == kPathMonStageBandwidthPacket) {
+            state.expectedBandwidthPackets =
+                std::max<int>(state.expectedBandwidthPackets, static_cast<int>(packetCount));
+            state.bandwidthRecords[sequence] = TrainRecord{arrivalNs};
+        }
+    }
+
+    void respondWithPathMonSummary(
+        const RoundId& roundId,
+        uint8_t stage,
+        uint32_t packetCount,
+        const ReceivedDatagram& datagram
+    ) {
+        auto iter = pathMonRoundStates_.find(roundId);
+        const PathMonRoundState* state = nullptr;
+        if (iter != pathMonRoundStates_.end()) {
+            iter->second.lastUpdatedNs = datagram.arrivalNs;
+            state = &iter->second;
+        }
+
+        std::vector<std::pair<uint32_t, TrainRecord>> records;
+        int expectedCount = static_cast<int>(packetCount);
+        int packetSizeBytes = 0;
+        if (state != nullptr) {
+            packetSizeBytes = state->packetSizeBytes;
+            const auto& sourceRecords =
+                stage == kPathMonStageJitterSummary
+                    ? state->jitterRecords
+                    : state->bandwidthRecords;
+            records.reserve(sourceRecords.size());
+            for (const auto& entry : sourceRecords) {
+                records.push_back(entry);
+            }
+            expectedCount = std::max<int>(expectedCount, static_cast<int>(records.size()));
+            expectedCount = std::max<int>(
+                expectedCount,
+                stage == kPathMonStageJitterSummary
+                    ? state->expectedJitterPackets
+                    : state->expectedBandwidthPackets
+            );
+        }
+
+        std::sort(
+            records.begin(),
+            records.end(),
+            [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; }
+        );
+
+        const int receivedCount = static_cast<int>(records.size());
+        const int64_t firstReceiveNs = records.empty() ? 0 : records.front().second.recvNs;
+        const double lossRate =
+            expectedCount > 0
+                ? static_cast<double>(std::max(expectedCount - receivedCount, 0)) /
+                      static_cast<double>(expectedCount)
+                : 0.0;
+        const bool success = receivedCount > 0;
+
+        std::vector<uint8_t> response;
+        response.reserve(43 + (records.size() * 12));
+        response.push_back(kPathMonMessageType);
+        response.push_back(stage);
+        response.insert(response.end(), roundId.bytes.begin(), roundId.bytes.end());
+        response.push_back(success ? 1 : 0);
+        appendU32BE(response, static_cast<uint32_t>(receivedCount));
+        appendU32BE(response, static_cast<uint32_t>(std::max(expectedCount, 0)));
+        appendU64BE(response, static_cast<uint64_t>(std::max<int64_t>(firstReceiveNs, 0)));
+        appendDoubleBE(response, lossRate);
+
+        for (const auto& record : records) {
+            appendU32BE(response, record.first);
+            appendU64BE(
+                response,
+                static_cast<uint64_t>(std::max<int64_t>(record.second.recvNs - firstReceiveNs, 0))
+            );
+        }
+
+        sendResponse(response, datagram);
+        logPathMonSummary(
+            roundId,
+            stage,
+            packetSizeBytes,
+            receivedCount,
+            expectedCount,
+            lossRate
+        );
+
+        if (stage == kPathMonStageBandwidthSummary) {
+            pathMonRoundStates_.erase(roundId);
         }
     }
 
@@ -905,6 +1089,25 @@ private:
             << '\n';
     }
 
+    void logPathMonSummary(
+        const RoundId& roundId,
+        uint8_t stage,
+        int packetSizeBytes,
+        int receivedCount,
+        int expectedCount,
+        double lossRate
+    ) const {
+        std::cout
+            << "[PathMon][Winsock][Summary] "
+            << "round=" << formatRoundId(roundId) << ' '
+            << "stage=" << pathMonStageName(stage) << ' '
+            << "payload_bytes=" << packetSizeBytes << ' '
+            << "received=" << receivedCount << '/' << expectedCount << ' '
+            << "loss=" << std::fixed << std::setprecision(3) << lossRate << ' '
+            << "timestamp_source=app_qpc"
+            << '\n';
+    }
+
     void logPairAnalysis(const RoundId& roundId, const RoundState& state, const PairAnalysis& analysis) const {
         const std::string roundText = formatRoundId(roundId);
         const std::string ceText =
@@ -1003,9 +1206,22 @@ private:
         }
     }
 
+    void cleanupStalePathMonRoundStates(int64_t nowNs) {
+        std::vector<RoundId> staleRoundIds;
+        for (const auto& entry : pathMonRoundStates_) {
+            if ((nowNs - entry.second.lastUpdatedNs) > kRoundStateTtlNs) {
+                staleRoundIds.push_back(entry.first);
+            }
+        }
+        for (const RoundId& roundId : staleRoundIds) {
+            pathMonRoundStates_.erase(roundId);
+        }
+    }
+
     SOCKET sock_;
     ProgramOptions options_;
     std::unordered_map<RoundId, RoundState, RoundIdHash> roundStates_;
+    std::unordered_map<RoundId, PathMonRoundState, RoundIdHash> pathMonRoundStates_;
 };
 
 } // namespace

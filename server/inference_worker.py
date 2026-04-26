@@ -131,6 +131,21 @@ def _winsock_udp_server_executable() -> Path:
     return Path(__file__).with_name("winsock_timestamp_udp_server.exe")
 
 
+def _winsock_udp_server_source() -> Path:
+    return Path(__file__).with_name("winsock_timestamp_udp_server.cpp")
+
+
+def _winsock_udp_server_is_current(executable: Path) -> bool:
+    source = _winsock_udp_server_source()
+    if not source.exists():
+        return True
+
+    try:
+        return executable.stat().st_mtime >= source.stat().st_mtime
+    except OSError:
+        return False
+
+
 def _make_winsock_udp_server_command() -> Optional[List[str]]:
     if os.name != "nt":
         return None
@@ -140,6 +155,13 @@ def _make_winsock_udp_server_command() -> Optional[List[str]]:
 
     executable = _winsock_udp_server_executable()
     if not executable.exists():
+        return None
+
+    if not _winsock_udp_server_is_current(executable):
+        print(
+            "[NetworkProbe] Windows native UDP probe server is older than "
+            "winsock_timestamp_udp_server.cpp; falling back to Python UDP server."
+        )
         return None
 
     command = [
