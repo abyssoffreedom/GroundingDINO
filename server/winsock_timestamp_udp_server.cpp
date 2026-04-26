@@ -15,9 +15,11 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <cmath>
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <numeric>
 #include <sstream>
 #include <string>
 #include <stdexcept>
@@ -175,6 +177,8 @@ struct FinalSummary {
     double availableBandwidthMbps = 0.0;
     double correctedAvailableBandwidthMbps = 0.0;
     double lossRate = 0.0;
+    std::vector<int64_t> trainGapsNs;
+    std::vector<uint32_t> trainGapStartSequences;
 };
 
 uint32_t readU32BE(const uint8_t* data) {
@@ -259,6 +263,44 @@ double median(std::vector<double> values) {
         return (values[mid - 1] + values[mid]) / 2.0;
     }
     return values[mid];
+}
+
+double percentileNsToUs(std::vector<int64_t> values, double p) {
+    if (values.empty()) {
+        return 0.0;
+    }
+
+    std::sort(values.begin(), values.end());
+    const double clampedP = std::min(std::max(p, 0.0), 1.0);
+    const double rawIndex = clampedP * static_cast<double>(values.size() - 1);
+    const size_t lowerIndex = static_cast<size_t>(std::floor(rawIndex));
+    const size_t upperIndex = static_cast<size_t>(std::ceil(rawIndex));
+    if (lowerIndex == upperIndex) {
+        return static_cast<double>(values[lowerIndex]) / 1000.0;
+    }
+
+    const double fraction = rawIndex - static_cast<double>(lowerIndex);
+    const double lowerValue = static_cast<double>(values[lowerIndex]);
+    const double upperValue = static_cast<double>(values[upperIndex]);
+    return (lowerValue + ((upperValue - lowerValue) * fraction)) / 1000.0;
+}
+
+std::string formatGapListUs(
+    const std::vector<uint32_t>& startSequences,
+    const std::vector<int64_t>& gapsNs
+) {
+    std::ostringstream stream;
+    stream << std::fixed << std::setprecision(2);
+    for (size_t i = 0; i < gapsNs.size(); ++i) {
+        if (i > 0) {
+            stream << ',';
+        }
+        if (i < startSequences.size()) {
+            stream << startSequences[i] << "->" << (startSequences[i] + 1) << ':';
+        }
+        stream << (static_cast<double>(gapsNs[i]) / 1000.0) << "us";
+    }
+    return stream.str();
 }
 
 int64_t qpcToNs(uint64_t qpcValue, int64_t qpcFrequency) {
@@ -695,6 +737,7 @@ private:
 
             if (computeFinalSummary(state, summary)) {
                 success = true;
+                logTrainAnalysis(roundId, state, summary);
             }
         }
 
@@ -812,10 +855,12 @@ private:
         }
 
         std::vector<int64_t> gapsNs;
+        std::vector<uint32_t> gapStartSequences;
         for (size_t i = 0; i + 1 < trainRecords.size(); ++i) {
             const int64_t gapNs = trainRecords[i + 1].second.recvNs - trainRecords[i].second.recvNs;
             if (gapNs > 0) {
                 gapsNs.push_back(gapNs);
+                gapStartSequences.push_back(trainRecords[i].first);
             }
         }
         if (gapsNs.empty()) {
@@ -848,6 +893,8 @@ private:
         summary.availableBandwidthMbps = std::max(0.0, summary.availableBandwidthMbps);
 
         summary.sentTrainPackets = std::max(state.expectedTrainPackets, summary.receivedTrainPackets);
+        summary.trainGapsNs = std::move(gapsNs);
+        summary.trainGapStartSequences = std::move(gapStartSequences);
         if (summary.sentTrainPackets > 0) {
             summary.lossRate =
                 static_cast<double>(std::max(summary.sentTrainPackets - summary.receivedTrainPackets, 0)) /
@@ -856,6 +903,55 @@ private:
         summary.correctedAvailableBandwidthMbps =
             summary.availableBandwidthMbps * (1.0 - summary.lossRate);
         return true;
+    }
+
+    void logTrainAnalysis(
+        const RoundId& roundId,
+        const RoundState& state,
+        const FinalSummary& summary
+    ) const {
+        const std::string roundText = formatRoundId(roundId);
+        const std::vector<int64_t>& gapsNs = summary.trainGapsNs;
+        if (gapsNs.empty()) {
+            std::cout
+                << "[WBest][Winsock][Train][Summary] "
+                << "round=" << roundText
+                << " gaps=0\n";
+            return;
+        }
+
+        const auto minMax = std::minmax_element(gapsNs.begin(), gapsNs.end());
+        const long double sumNs = std::accumulate(
+            gapsNs.begin(),
+            gapsNs.end(),
+            0.0L,
+            [](long double partial, int64_t value) {
+                return partial + static_cast<long double>(value);
+            }
+        );
+        const double meanUs = static_cast<double>(sumNs / static_cast<long double>(gapsNs.size())) / 1000.0;
+
+        std::cout
+            << "[WBest][Winsock][Train][Summary] "
+            << "round=" << roundText << ' '
+            << "payload_bytes=" << state.packetSizeBytes << ' '
+            << "received_train=" << summary.receivedTrainPackets << '/' << summary.sentTrainPackets << ' '
+            << "Ce=" << std::fixed << std::setprecision(2) << summary.effectiveCapacityMbps << "Mbps "
+            << "R=" << std::fixed << std::setprecision(2) << summary.achievableThroughputMbps << "Mbps "
+            << "gap_count=" << gapsNs.size() << ' '
+            << "gap_min=" << (static_cast<double>(*minMax.first) / 1000.0) << "us "
+            << "gap_median=" << percentileNsToUs(gapsNs, 0.5) << "us "
+            << "gap_mean=" << meanUs << "us "
+            << "gap_p90=" << percentileNsToUs(gapsNs, 0.9) << "us "
+            << "gap_max=" << (static_cast<double>(*minMax.second) / 1000.0) << "us "
+            << "timestamp_source=" << timestampSourceName(options_.timestampSource)
+            << '\n';
+
+        std::cout
+            << "[WBest][Winsock][Train][Detail] "
+            << "round=" << roundText << ' '
+            << "gaps=" << formatGapListUs(summary.trainGapStartSequences, gapsNs)
+            << '\n';
     }
 
     void logPairAnalysis(const RoundId& roundId, const RoundState& state, const PairAnalysis& analysis) const {

@@ -197,6 +197,19 @@ After the app performs probing, inspect lines like:
 [WBest][Winsock][Summary] round=... payload_bytes=1400 valid_pairs=.../30 Ce=...Mbps gap_lt_50us=... non_positive_gap=... ci_300_1000=... missing=... reordered=... seq_mismatch=... socket_timestamped_pairs=... fallback_timestamp_pairs=... min_pair_gap_us=...
 ```
 
+Packet train diagnostics are also printed:
+
+```text
+[WBest][Winsock][Train][Summary] round=... payload_bytes=1400 received_train=30/30 Ce=...Mbps R=...Mbps gap_count=29 gap_min=...us gap_median=...us gap_mean=...us gap_p90=...us gap_max=...us timestamp_source=...
+[WBest][Winsock][Train][Detail] round=... gaps=1->2:...us,2->3:...us,...
+```
+
+The Swift client also prints the target train send gap and measured send completion gap:
+
+```text
+[NetworkProbe] ... send_gap=...ms actual_send_gap_mean=...ms actual_send_gap_min=...ms actual_send_gap_median=...ms actual_send_gap_p90=...ms actual_send_gap_max=...ms ...
+```
+
 Key fields:
 
 ```text
@@ -236,6 +249,12 @@ High values usually indicate timestamp compression or an unrealistic Ce estimate
 ```text
 missing, reordered, seq_mismatch
 Should be 0. If not, packet matching or packet delivery is broken.
+```
+
+```text
+Train gap mean vs median
+If train gap median is close to the target send gap but train gap mean is much larger, a few large receive gaps are pulling R down.
+If client actual_send_gap_mean is already much larger than send_gap, the client pacing path cannot send at the target Ce rate.
 ```
 
 ## 9. Interpreting Results
