@@ -1,341 +1,108 @@
-[WBest][Pairs][Summary] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 payload_bytes=1500 valid_pairs=30/30 Ce=528.68Mbps gap_lt_50us=28 ci_300_1000=26 missing=0 reordered=0 seq_mismatch=0
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=01 seq=(1,2) expected=(1,2) gap=1400.30us Ci=8.57Mbps flags=ok
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=02 seq=(3,4) expected=(3,4) gap=22.10us Ci=542.99Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=03 seq=(5,6) expected=(5,6) gap=31.10us Ci=385.85Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=04 seq=(7,8) expected=(7,8) gap=23.10us Ci=519.48Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=05 seq=(9,10) expected=(9,10) gap=24.60us Ci=487.80Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=06 seq=(11,12) expected=(11,12) gap=22.50us Ci=533.33Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=07 seq=(13,14) expected=(13,14) gap=21.00us Ci=571.43Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=08 seq=(15,16) expected=(15,16) gap=22.30us Ci=538.12Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=09 seq=(17,18) expected=(17,18) gap=23.70us Ci=506.33Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=10 seq=(19,20) expected=(19,20) gap=12.50us Ci=960.00Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=11 seq=(21,22) expected=(21,22) gap=14.80us Ci=810.81Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=12 seq=(23,24) expected=(23,24) gap=23.10us Ci=519.48Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=13 seq=(25,26) expected=(25,26) gap=26.70us Ci=449.44Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=14 seq=(27,28) expected=(27,28) gap=982.00us Ci=12.22Mbps flags=ok
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=15 seq=(29,30) expected=(29,30) gap=18.60us Ci=645.16Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=16 seq=(31,32) expected=(31,32) gap=11.00us Ci=1090.91Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=17 seq=(33,34) expected=(33,34) gap=30.70us Ci=390.88Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=18 seq=(35,36) expected=(35,36) gap=22.50us Ci=533.33Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=19 seq=(37,38) expected=(37,38) gap=20.10us Ci=597.01Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=20 seq=(39,40) expected=(39,40) gap=22.90us Ci=524.02Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=21 seq=(41,42) expected=(41,42) gap=15.70us Ci=764.33Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=22 seq=(43,44) expected=(43,44) gap=33.80us Ci=355.03Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=23 seq=(45,46) expected=(45,46) gap=21.70us Ci=553.00Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=24 seq=(47,48) expected=(47,48) gap=20.30us Ci=591.13Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=25 seq=(49,50) expected=(49,50) gap=19.70us Ci=609.14Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=26 seq=(51,52) expected=(51,52) gap=27.70us Ci=433.21Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=27 seq=(53,54) expected=(53,54) gap=47.50us Ci=252.63Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=28 seq=(55,56) expected=(55,56) gap=39.70us Ci=302.27Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=29 seq=(57,58) expected=(57,58) gap=30.40us Ci=394.74Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=d9349ff0-3b1f-4dbb-8f5a-52caccbea794 pair=30 seq=(59,60) expected=(59,60) gap=21.00us Ci=571.43Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Summary] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e payload_bytes=1500 valid_pairs=30/30 Ce=547.96Mbps gap_lt_50us=30 ci_300_1000=27 missing=0 reordered=0 seq_mismatch=0
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=01 seq=(1,2) expected=(1,2) gap=32.40us Ci=370.37Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=02 seq=(3,4) expected=(3,4) gap=22.20us Ci=540.54Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=03 seq=(5,6) expected=(5,6) gap=35.60us Ci=337.08Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=04 seq=(7,8) expected=(7,8) gap=21.10us Ci=568.72Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=05 seq=(9,10) expected=(9,10) gap=12.00us Ci=1000.00Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=06 seq=(11,12) expected=(11,12) gap=41.10us Ci=291.97Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=07 seq=(13,14) expected=(13,14) gap=20.30us Ci=591.13Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=08 seq=(15,16) expected=(15,16) gap=22.90us Ci=524.02Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=09 seq=(17,18) expected=(17,18) gap=21.70us Ci=553.00Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=10 seq=(19,20) expected=(19,20) gap=20.60us Ci=582.52Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=11 seq=(21,22) expected=(21,22) gap=22.00us Ci=545.45Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=12 seq=(23,24) expected=(23,24) gap=25.00us Ci=480.00Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=13 seq=(25,26) expected=(25,26) gap=14.40us Ci=833.33Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=14 seq=(27,28) expected=(27,28) gap=21.80us Ci=550.46Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=15 seq=(29,30) expected=(29,30) gap=22.20us Ci=540.54Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=16 seq=(31,32) expected=(31,32) gap=20.60us Ci=582.52Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=17 seq=(33,34) expected=(33,34) gap=29.60us Ci=405.41Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=18 seq=(35,36) expected=(35,36) gap=21.10us Ci=568.72Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=19 seq=(37,38) expected=(37,38) gap=29.80us Ci=402.68Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=20 seq=(39,40) expected=(39,40) gap=27.80us Ci=431.65Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=21 seq=(41,42) expected=(41,42) gap=32.80us Ci=365.85Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=22 seq=(43,44) expected=(43,44) gap=14.80us Ci=810.81Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=23 seq=(45,46) expected=(45,46) gap=21.00us Ci=571.43Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=24 seq=(47,48) expected=(47,48) gap=20.30us Ci=591.13Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=25 seq=(49,50) expected=(49,50) gap=46.10us Ci=260.30Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=26 seq=(51,52) expected=(51,52) gap=42.30us Ci=283.69Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=27 seq=(53,54) expected=(53,54) gap=21.70us Ci=553.00Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=28 seq=(55,56) expected=(55,56) gap=23.20us Ci=517.24Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=29 seq=(57,58) expected=(57,58) gap=14.30us Ci=839.16Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=2f6a8294-bf27-41e5-beeb-f51f1e8e526e pair=30 seq=(59,60) expected=(59,60) gap=20.20us Ci=594.06Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Summary] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 payload_bytes=1500 valid_pairs=30/30 Ce=516.15Mbps gap_lt_50us=24 ci_300_1000=21 missing=0 reordered=0 seq_mismatch=0
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=01 seq=(1,2) expected=(1,2) gap=53.90us Ci=222.63Mbps flags=ok
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=02 seq=(3,4) expected=(3,4) gap=23.10us Ci=519.48Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=03 seq=(5,6) expected=(5,6) gap=1484.10us Ci=8.09Mbps flags=ok
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=04 seq=(7,8) expected=(7,8) gap=25.90us Ci=463.32Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=05 seq=(9,10) expected=(9,10) gap=33.90us Ci=353.98Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=06 seq=(11,12) expected=(11,12) gap=22.40us Ci=535.71Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=07 seq=(13,14) expected=(13,14) gap=20.50us Ci=585.37Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=08 seq=(15,16) expected=(15,16) gap=20.70us Ci=579.71Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=09 seq=(17,18) expected=(17,18) gap=20.80us Ci=576.92Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=10 seq=(19,20) expected=(19,20) gap=20.40us Ci=588.24Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=11 seq=(21,22) expected=(21,22) gap=22.80us Ci=526.32Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=12 seq=(23,24) expected=(23,24) gap=22.70us Ci=528.63Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=13 seq=(25,26) expected=(25,26) gap=47.30us Ci=253.70Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=14 seq=(27,28) expected=(27,28) gap=21.30us Ci=563.38Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=15 seq=(29,30) expected=(29,30) gap=21.20us Ci=566.04Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=16 seq=(31,32) expected=(31,32) gap=45.00us Ci=266.67Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=17 seq=(33,34) expected=(33,34) gap=1099.60us Ci=10.91Mbps flags=ok
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=18 seq=(35,36) expected=(35,36) gap=39.60us Ci=303.03Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=19 seq=(37,38) expected=(37,38) gap=30.10us Ci=398.67Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=20 seq=(39,40) expected=(39,40) gap=45.60us Ci=263.16Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=21 seq=(41,42) expected=(41,42) gap=32.80us Ci=365.85Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=22 seq=(43,44) expected=(43,44) gap=1026.00us Ci=11.70Mbps flags=ok
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=23 seq=(45,46) expected=(45,46) gap=21.00us Ci=571.43Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=24 seq=(47,48) expected=(47,48) gap=12.00us Ci=1000.00Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=25 seq=(49,50) expected=(49,50) gap=20.20us Ci=594.06Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=26 seq=(51,52) expected=(51,52) gap=20.30us Ci=591.13Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=27 seq=(53,54) expected=(53,54) gap=1050.30us Ci=11.43Mbps flags=ok
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=28 seq=(55,56) expected=(55,56) gap=14.80us Ci=810.81Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=29 seq=(57,58) expected=(57,58) gap=23.40us Ci=512.82Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=cbbe9675-7890-4fbf-bf3d-79442334c2b5 pair=30 seq=(59,60) expected=(59,60) gap=1396.90us Ci=8.59Mbps flags=ok
-[WBest][Pairs][Summary] round=ac528ee5-543e-4566-b9cd-6575e279f047 payload_bytes=1500 valid_pairs=30/30 Ce=528.68Mbps gap_lt_50us=29 ci_300_1000=28 missing=0 reordered=0 seq_mismatch=0
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=01 seq=(1,2) expected=(1,2) gap=34.00us Ci=352.94Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=02 seq=(3,4) expected=(3,4) gap=23.00us Ci=521.74Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=03 seq=(5,6) expected=(5,6) gap=50.50us Ci=237.62Mbps flags=ok
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=04 seq=(7,8) expected=(7,8) gap=21.70us Ci=553.00Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=05 seq=(9,10) expected=(9,10) gap=22.00us Ci=545.45Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=06 seq=(11,12) expected=(11,12) gap=12.30us Ci=975.61Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=07 seq=(13,14) expected=(13,14) gap=20.40us Ci=588.24Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=08 seq=(15,16) expected=(15,16) gap=23.30us Ci=515.02Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=09 seq=(17,18) expected=(17,18) gap=19.40us Ci=618.56Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=10 seq=(19,20) expected=(19,20) gap=21.30us Ci=563.38Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=11 seq=(21,22) expected=(21,22) gap=22.50us Ci=533.33Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=12 seq=(23,24) expected=(23,24) gap=45.60us Ci=263.16Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=13 seq=(25,26) expected=(25,26) gap=21.80us Ci=550.46Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=14 seq=(27,28) expected=(27,28) gap=28.00us Ci=428.57Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=15 seq=(29,30) expected=(29,30) gap=26.80us Ci=447.76Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=16 seq=(31,32) expected=(31,32) gap=28.90us Ci=415.22Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=17 seq=(33,34) expected=(33,34) gap=27.60us Ci=434.78Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=18 seq=(35,36) expected=(35,36) gap=25.50us Ci=470.59Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=19 seq=(37,38) expected=(37,38) gap=24.10us Ci=497.93Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=20 seq=(39,40) expected=(39,40) gap=22.50us Ci=533.33Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=21 seq=(41,42) expected=(41,42) gap=21.60us Ci=555.56Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=22 seq=(43,44) expected=(43,44) gap=23.50us Ci=510.64Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=23 seq=(45,46) expected=(45,46) gap=13.80us Ci=869.57Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=24 seq=(47,48) expected=(47,48) gap=20.90us Ci=574.16Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=25 seq=(49,50) expected=(49,50) gap=25.80us Ci=465.12Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=26 seq=(51,52) expected=(51,52) gap=24.80us Ci=483.87Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=27 seq=(53,54) expected=(53,54) gap=22.90us Ci=524.02Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=28 seq=(55,56) expected=(55,56) gap=22.00us Ci=545.45Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=29 seq=(57,58) expected=(57,58) gap=21.40us Ci=560.75Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=ac528ee5-543e-4566-b9cd-6575e279f047 pair=30 seq=(59,60) expected=(59,60) gap=21.20us Ci=566.04Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Summary] round=617cf76e-813c-408a-9507-77d15ed58459 payload_bytes=1500 valid_pairs=30/30 Ce=482.99Mbps gap_lt_50us=25 ci_300_1000=23 missing=0 reordered=0 seq_mismatch=0
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=01 seq=(1,2) expected=(1,2) gap=33.20us Ci=361.45Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=02 seq=(3,4) expected=(3,4) gap=30.70us Ci=390.88Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=03 seq=(5,6) expected=(5,6) gap=32.80us Ci=365.85Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=04 seq=(7,8) expected=(7,8) gap=51.00us Ci=235.29Mbps flags=ok
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=05 seq=(9,10) expected=(9,10) gap=28.40us Ci=422.54Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=06 seq=(11,12) expected=(11,12) gap=24.30us Ci=493.83Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=07 seq=(13,14) expected=(13,14) gap=21.80us Ci=550.46Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=08 seq=(15,16) expected=(15,16) gap=1083.30us Ci=11.08Mbps flags=ok
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=09 seq=(17,18) expected=(17,18) gap=22.60us Ci=530.97Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=10 seq=(19,20) expected=(19,20) gap=21.90us Ci=547.95Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=11 seq=(21,22) expected=(21,22) gap=22.50us Ci=533.33Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=12 seq=(23,24) expected=(23,24) gap=38.20us Ci=314.14Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=13 seq=(25,26) expected=(25,26) gap=31.80us Ci=377.36Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=14 seq=(27,28) expected=(27,28) gap=25.20us Ci=476.19Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=15 seq=(29,30) expected=(29,30) gap=21.20us Ci=566.04Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=16 seq=(31,32) expected=(31,32) gap=20.80us Ci=576.92Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=17 seq=(33,34) expected=(33,34) gap=983.20us Ci=12.21Mbps flags=ok
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=18 seq=(35,36) expected=(35,36) gap=20.50us Ci=585.37Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=19 seq=(37,38) expected=(37,38) gap=21.00us Ci=571.43Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=20 seq=(39,40) expected=(39,40) gap=20.60us Ci=582.52Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=21 seq=(41,42) expected=(41,42) gap=14.70us Ci=816.33Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=22 seq=(43,44) expected=(43,44) gap=44.90us Ci=267.26Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=23 seq=(45,46) expected=(45,46) gap=44.10us Ci=272.11Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=24 seq=(47,48) expected=(47,48) gap=68.90us Ci=174.17Mbps flags=ok
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=25 seq=(49,50) expected=(49,50) gap=15.80us Ci=759.49Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=26 seq=(51,52) expected=(51,52) gap=30.90us Ci=388.35Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=27 seq=(53,54) expected=(53,54) gap=1271.10us Ci=9.44Mbps flags=ok
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=28 seq=(55,56) expected=(55,56) gap=24.50us Ci=489.80Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=29 seq=(57,58) expected=(57,58) gap=13.00us Ci=923.08Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=617cf76e-813c-408a-9507-77d15ed58459 pair=30 seq=(59,60) expected=(59,60) gap=21.80us Ci=550.46Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Summary] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 payload_bytes=1500 valid_pairs=30/30 Ce=458.26Mbps gap_lt_50us=26 ci_300_1000=25 missing=0 reordered=0 seq_mismatch=0
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=01 seq=(1,2) expected=(1,2) gap=30.80us Ci=389.61Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=02 seq=(3,4) expected=(3,4) gap=1072.20us Ci=11.19Mbps flags=ok
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=03 seq=(5,6) expected=(5,6) gap=1037.10us Ci=11.57Mbps flags=ok
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=04 seq=(7,8) expected=(7,8) gap=1062.60us Ci=11.29Mbps flags=ok
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=05 seq=(9,10) expected=(9,10) gap=49.60us Ci=241.94Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=06 seq=(11,12) expected=(11,12) gap=25.60us Ci=468.75Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=07 seq=(13,14) expected=(13,14) gap=39.20us Ci=306.12Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=08 seq=(15,16) expected=(15,16) gap=20.30us Ci=591.13Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=09 seq=(17,18) expected=(17,18) gap=31.00us Ci=387.10Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=10 seq=(19,20) expected=(19,20) gap=25.60us Ci=468.75Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=11 seq=(21,22) expected=(21,22) gap=19.20us Ci=625.00Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=12 seq=(23,24) expected=(23,24) gap=22.10us Ci=542.99Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=13 seq=(25,26) expected=(25,26) gap=23.30us Ci=515.02Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=14 seq=(27,28) expected=(27,28) gap=21.50us Ci=558.14Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=15 seq=(29,30) expected=(29,30) gap=20.10us Ci=597.01Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=16 seq=(31,32) expected=(31,32) gap=30.40us Ci=394.74Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=17 seq=(33,34) expected=(33,34) gap=23.10us Ci=519.48Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=18 seq=(35,36) expected=(35,36) gap=21.10us Ci=568.72Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=19 seq=(37,38) expected=(37,38) gap=22.10us Ci=542.99Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=20 seq=(39,40) expected=(39,40) gap=1438.50us Ci=8.34Mbps flags=ok
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=21 seq=(41,42) expected=(41,42) gap=23.30us Ci=515.02Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=22 seq=(43,44) expected=(43,44) gap=33.50us Ci=358.21Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=23 seq=(45,46) expected=(45,46) gap=22.60us Ci=530.97Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=24 seq=(47,48) expected=(47,48) gap=22.40us Ci=535.71Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=25 seq=(49,50) expected=(49,50) gap=29.80us Ci=402.68Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=26 seq=(51,52) expected=(51,52) gap=26.90us Ci=446.10Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=27 seq=(53,54) expected=(53,54) gap=25.10us Ci=478.09Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=28 seq=(55,56) expected=(55,56) gap=32.50us Ci=369.23Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=29 seq=(57,58) expected=(57,58) gap=31.20us Ci=384.62Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=bbdf21a8-ccde-4d56-91e5-19c32578ed22 pair=30 seq=(59,60) expected=(59,60) gap=26.80us Ci=447.76Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Summary] round=b661d104-21a8-4aa9-9038-760318444ac5 payload_bytes=1500 valid_pairs=30/30 Ce=567.38Mbps gap_lt_50us=29 ci_300_1000=25 missing=0 reordered=0 seq_mismatch=0
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=01 seq=(1,2) expected=(1,2) gap=32.50us Ci=369.23Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=02 seq=(3,4) expected=(3,4) gap=23.60us Ci=508.47Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=03 seq=(5,6) expected=(5,6) gap=33.80us Ci=355.03Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=04 seq=(7,8) expected=(7,8) gap=21.80us Ci=550.46Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=05 seq=(9,10) expected=(9,10) gap=21.60us Ci=555.56Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=06 seq=(11,12) expected=(11,12) gap=20.60us Ci=582.52Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=07 seq=(13,14) expected=(13,14) gap=21.00us Ci=571.43Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=08 seq=(15,16) expected=(15,16) gap=44.70us Ci=268.46Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=09 seq=(17,18) expected=(17,18) gap=14.50us Ci=827.59Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=10 seq=(19,20) expected=(19,20) gap=20.80us Ci=576.92Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=11 seq=(21,22) expected=(21,22) gap=22.10us Ci=542.99Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=12 seq=(23,24) expected=(23,24) gap=42.20us Ci=284.36Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=13 seq=(25,26) expected=(25,26) gap=20.90us Ci=574.16Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=14 seq=(27,28) expected=(27,28) gap=20.50us Ci=585.37Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=15 seq=(29,30) expected=(29,30) gap=21.60us Ci=555.56Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=16 seq=(31,32) expected=(31,32) gap=15.00us Ci=800.00Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=17 seq=(33,34) expected=(33,34) gap=22.30us Ci=538.12Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=18 seq=(35,36) expected=(35,36) gap=21.60us Ci=555.56Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=19 seq=(37,38) expected=(37,38) gap=20.00us Ci=600.00Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=20 seq=(39,40) expected=(39,40) gap=11.80us Ci=1016.95Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=21 seq=(41,42) expected=(41,42) gap=20.10us Ci=597.01Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=22 seq=(43,44) expected=(43,44) gap=1060.60us Ci=11.31Mbps flags=ok
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=23 seq=(45,46) expected=(45,46) gap=23.40us Ci=512.82Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=24 seq=(47,48) expected=(47,48) gap=21.20us Ci=566.04Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=25 seq=(49,50) expected=(49,50) gap=10.90us Ci=1100.92Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=26 seq=(51,52) expected=(51,52) gap=23.10us Ci=519.48Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=27 seq=(53,54) expected=(53,54) gap=21.10us Ci=568.72Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=28 seq=(55,56) expected=(55,56) gap=20.50us Ci=585.37Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=29 seq=(57,58) expected=(57,58) gap=19.80us Ci=606.06Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=b661d104-21a8-4aa9-9038-760318444ac5 pair=30 seq=(59,60) expected=(59,60) gap=20.80us Ci=576.92Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Summary] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 payload_bytes=1500 valid_pairs=30/30 Ce=553.01Mbps gap_lt_50us=28 ci_300_1000=22 missing=0 reordered=0 seq_mismatch=0
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=01 seq=(1,2) expected=(1,2) gap=52.10us Ci=230.33Mbps flags=ok
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=02 seq=(3,4) expected=(3,4) gap=24.90us Ci=481.93Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=03 seq=(5,6) expected=(5,6) gap=34.10us Ci=351.91Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=04 seq=(7,8) expected=(7,8) gap=22.80us Ci=526.32Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=05 seq=(9,10) expected=(9,10) gap=12.20us Ci=983.61Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=06 seq=(11,12) expected=(11,12) gap=22.00us Ci=545.45Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=07 seq=(13,14) expected=(13,14) gap=21.50us Ci=558.14Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=08 seq=(15,16) expected=(15,16) gap=1218.30us Ci=9.85Mbps flags=ok
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=09 seq=(17,18) expected=(17,18) gap=30.60us Ci=392.16Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=10 seq=(19,20) expected=(19,20) gap=20.80us Ci=576.92Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=11 seq=(21,22) expected=(21,22) gap=44.70us Ci=268.46Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=12 seq=(23,24) expected=(23,24) gap=27.70us Ci=433.21Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=13 seq=(25,26) expected=(25,26) gap=11.10us Ci=1081.08Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=14 seq=(27,28) expected=(27,28) gap=7.30us Ci=1643.84Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=15 seq=(29,30) expected=(29,30) gap=6.50us Ci=1846.15Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=16 seq=(31,32) expected=(31,32) gap=8.20us Ci=1463.41Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=17 seq=(33,34) expected=(33,34) gap=20.90us Ci=574.16Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=18 seq=(35,36) expected=(35,36) gap=21.60us Ci=555.56Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=19 seq=(37,38) expected=(37,38) gap=22.20us Ci=540.54Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=20 seq=(39,40) expected=(39,40) gap=20.60us Ci=582.52Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=21 seq=(41,42) expected=(41,42) gap=21.20us Ci=566.04Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=22 seq=(43,44) expected=(43,44) gap=23.40us Ci=512.82Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=23 seq=(45,46) expected=(45,46) gap=21.10us Ci=568.72Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=24 seq=(47,48) expected=(47,48) gap=21.30us Ci=563.38Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=25 seq=(49,50) expected=(49,50) gap=22.80us Ci=526.32Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=26 seq=(51,52) expected=(51,52) gap=20.90us Ci=574.16Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=27 seq=(53,54) expected=(53,54) gap=22.40us Ci=535.71Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=28 seq=(55,56) expected=(55,56) gap=20.00us Ci=600.00Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=29 seq=(57,58) expected=(57,58) gap=21.80us Ci=550.46Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=a76f21f1-73dc-4f7f-88ec-b3ccdea06604 pair=30 seq=(59,60) expected=(59,60) gap=44.80us Ci=267.86Mbps flags=gap_lt_50us
-[WBest][Pairs][Summary] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c payload_bytes=1500 valid_pairs=30/30 Ce=495.87Mbps gap_lt_50us=21 ci_300_1000=21 missing=0 reordered=0 seq_mismatch=0
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=01 seq=(1,2) expected=(1,2) gap=52.40us Ci=229.01Mbps flags=ok
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=02 seq=(3,4) expected=(3,4) gap=1011.40us Ci=11.86Mbps flags=ok
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=03 seq=(5,6) expected=(5,6) gap=21.60us Ci=555.56Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=04 seq=(7,8) expected=(7,8) gap=24.50us Ci=489.80Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=05 seq=(9,10) expected=(9,10) gap=13.50us Ci=888.89Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=06 seq=(11,12) expected=(11,12) gap=21.30us Ci=563.38Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=07 seq=(13,14) expected=(13,14) gap=20.60us Ci=582.52Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=08 seq=(15,16) expected=(15,16) gap=32.10us Ci=373.83Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=09 seq=(17,18) expected=(17,18) gap=21.20us Ci=566.04Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=10 seq=(19,20) expected=(19,20) gap=21.20us Ci=566.04Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=11 seq=(21,22) expected=(21,22) gap=22.20us Ci=540.54Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=12 seq=(23,24) expected=(23,24) gap=22.40us Ci=535.71Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=13 seq=(25,26) expected=(25,26) gap=1312.90us Ci=9.14Mbps flags=ok
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=14 seq=(27,28) expected=(27,28) gap=20.70us Ci=579.71Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=15 seq=(29,30) expected=(29,30) gap=22.70us Ci=528.63Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=16 seq=(31,32) expected=(31,32) gap=24.20us Ci=495.87Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=17 seq=(33,34) expected=(33,34) gap=23.60us Ci=508.47Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=18 seq=(35,36) expected=(35,36) gap=27.40us Ci=437.96Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=19 seq=(37,38) expected=(37,38) gap=1323.10us Ci=9.07Mbps flags=ok
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=20 seq=(39,40) expected=(39,40) gap=1243.60us Ci=9.65Mbps flags=ok
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=21 seq=(41,42) expected=(41,42) gap=23.60us Ci=508.47Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=22 seq=(43,44) expected=(43,44) gap=25.70us Ci=466.93Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=23 seq=(45,46) expected=(45,46) gap=1571.80us Ci=7.63Mbps flags=ok
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=24 seq=(47,48) expected=(47,48) gap=24.20us Ci=495.87Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=25 seq=(49,50) expected=(49,50) gap=24.00us Ci=500.00Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=26 seq=(51,52) expected=(51,52) gap=1490.60us Ci=8.05Mbps flags=ok
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=27 seq=(53,54) expected=(53,54) gap=1405.30us Ci=8.54Mbps flags=ok
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=28 seq=(55,56) expected=(55,56) gap=24.80us Ci=483.87Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=29 seq=(57,58) expected=(57,58) gap=23.50us Ci=510.64Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=59dbe71f-1b15-43df-a915-a24a9e8cf00c pair=30 seq=(59,60) expected=(59,60) gap=1630.50us Ci=7.36Mbps flags=ok
-[WBest][Pairs][Summary] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 payload_bytes=1500 valid_pairs=30/30 Ce=434.87Mbps gap_lt_50us=24 ci_300_1000=20 missing=0 reordered=0 seq_mismatch=0
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=01 seq=(1,2) expected=(1,2) gap=35.40us Ci=338.98Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=02 seq=(3,4) expected=(3,4) gap=1027.30us Ci=11.68Mbps flags=ok
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=03 seq=(5,6) expected=(5,6) gap=25.90us Ci=463.32Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=04 seq=(7,8) expected=(7,8) gap=1430.50us Ci=8.39Mbps flags=ok
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=05 seq=(9,10) expected=(9,10) gap=22.00us Ci=545.45Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=06 seq=(11,12) expected=(11,12) gap=47.40us Ci=253.16Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=07 seq=(13,14) expected=(13,14) gap=2038.10us Ci=5.89Mbps flags=ok
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=08 seq=(15,16) expected=(15,16) gap=25.00us Ci=480.00Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=09 seq=(17,18) expected=(17,18) gap=28.00us Ci=428.57Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=10 seq=(19,20) expected=(19,20) gap=27.20us Ci=441.18Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=11 seq=(21,22) expected=(21,22) gap=30.10us Ci=398.67Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=12 seq=(23,24) expected=(23,24) gap=30.50us Ci=393.44Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=13 seq=(25,26) expected=(25,26) gap=1364.70us Ci=8.79Mbps flags=ok
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=14 seq=(27,28) expected=(27,28) gap=24.20us Ci=495.87Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=15 seq=(29,30) expected=(29,30) gap=36.00us Ci=333.33Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=16 seq=(31,32) expected=(31,32) gap=46.50us Ci=258.06Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=17 seq=(33,34) expected=(33,34) gap=22.30us Ci=538.12Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=18 seq=(35,36) expected=(35,36) gap=21.30us Ci=563.38Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=19 seq=(37,38) expected=(37,38) gap=20.60us Ci=582.52Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=20 seq=(39,40) expected=(39,40) gap=21.40us Ci=560.75Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=21 seq=(41,42) expected=(41,42) gap=1478.70us Ci=8.12Mbps flags=ok
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=22 seq=(43,44) expected=(43,44) gap=44.20us Ci=271.49Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=23 seq=(45,46) expected=(45,46) gap=22.10us Ci=542.99Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=24 seq=(47,48) expected=(47,48) gap=24.50us Ci=489.80Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=25 seq=(49,50) expected=(49,50) gap=21.50us Ci=558.14Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=26 seq=(51,52) expected=(51,52) gap=21.30us Ci=563.38Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=27 seq=(53,54) expected=(53,54) gap=43.90us Ci=273.35Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=28 seq=(55,56) expected=(55,56) gap=21.20us Ci=566.04Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=29 seq=(57,58) expected=(57,58) gap=21.20us Ci=566.04Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=0fbbcef2-be00-41a1-afb6-707b967e44f5 pair=30 seq=(59,60) expected=(59,60) gap=1646.30us Ci=7.29Mbps flags=ok
-[WBest][Pairs][Summary] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 payload_bytes=1500 valid_pairs=30/30 Ce=515.36Mbps gap_lt_50us=23 ci_300_1000=20 missing=0 reordered=0 seq_mismatch=0
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=01 seq=(1,2) expected=(1,2) gap=27.70us Ci=433.21Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=02 seq=(3,4) expected=(3,4) gap=29.00us Ci=413.79Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=03 seq=(5,6) expected=(5,6) gap=1058.90us Ci=11.33Mbps flags=ok
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=04 seq=(7,8) expected=(7,8) gap=9.10us Ci=1318.68Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=05 seq=(9,10) expected=(9,10) gap=9.20us Ci=1304.35Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=06 seq=(11,12) expected=(11,12) gap=21.80us Ci=550.46Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=07 seq=(13,14) expected=(13,14) gap=20.00us Ci=600.00Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=08 seq=(15,16) expected=(15,16) gap=21.10us Ci=568.72Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=09 seq=(17,18) expected=(17,18) gap=21.60us Ci=555.56Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=10 seq=(19,20) expected=(19,20) gap=21.10us Ci=568.72Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=11 seq=(21,22) expected=(21,22) gap=23.90us Ci=502.09Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=12 seq=(23,24) expected=(23,24) gap=21.60us Ci=555.56Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=13 seq=(25,26) expected=(25,26) gap=22.70us Ci=528.63Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=14 seq=(27,28) expected=(27,28) gap=21.30us Ci=563.38Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=15 seq=(29,30) expected=(29,30) gap=20.70us Ci=579.71Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=16 seq=(31,32) expected=(31,32) gap=20.20us Ci=594.06Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=17 seq=(33,34) expected=(33,34) gap=20.10us Ci=597.01Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=18 seq=(35,36) expected=(35,36) gap=20.60us Ci=582.52Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=19 seq=(37,38) expected=(37,38) gap=1423.50us Ci=8.43Mbps flags=ok
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=20 seq=(39,40) expected=(39,40) gap=1651.50us Ci=7.27Mbps flags=ok
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=21 seq=(41,42) expected=(41,42) gap=1099.40us Ci=10.92Mbps flags=ok
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=22 seq=(43,44) expected=(43,44) gap=45.90us Ci=261.44Mbps flags=gap_lt_50us
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=23 seq=(45,46) expected=(45,46) gap=1189.20us Ci=10.09Mbps flags=ok
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=24 seq=(47,48) expected=(47,48) gap=1924.20us Ci=6.24Mbps flags=ok
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=25 seq=(49,50) expected=(49,50) gap=21.40us Ci=560.75Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=26 seq=(51,52) expected=(51,52) gap=1233.60us Ci=9.73Mbps flags=ok
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=27 seq=(53,54) expected=(53,54) gap=24.40us Ci=491.80Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=28 seq=(55,56) expected=(55,56) gap=28.30us Ci=424.03Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=29 seq=(57,58) expected=(57,58) gap=26.70us Ci=449.44Mbps flags=gap_lt_50us,ci_300_1000
-[WBest][Pairs][Detail] round=98d25563-95f6-42fe-a6fa-6d9bf372a794 pair=30 seq=(59,60) expected=(59,60) gap=25.80us Ci=465.12Mbps flags=gap_lt_50us,ci_300_1000
+**目标**
+用 Npcap/Wireshark 抓到真正到达 Windows 服务器网卡的 UDP 包时间戳，然后重新计算每个 packet pair 的 `gap` 和 `Ci`，对比 Python 服务端日志，判断 `Ce` 高估是不是 Python `asyncio` 用户态时间戳造成的。
+
+**1. 安装工具**
+安装 Wireshark，并确认安装时包含 Npcap 和命令行工具：
+
+```powershell
+C:\Program Files\Wireshark\dumpcap.exe
+C:\Program Files\Wireshark\tshark.exe
+```
+
+如果 Npcap 安装时勾了“Only administrators can use Npcap”，后面的 PowerShell 要用管理员权限打开。
+
+**2. 找到正确网卡**
+在 Windows 管理员 PowerShell 里运行：
+
+```powershell
+$WIRESHARK = "C:\Program Files\Wireshark"
+& "$WIRESHARK\dumpcap.exe" -D
+```
+
+你会看到类似：
+
+```text
+1. \Device\NPF_{...} (Wi-Fi)
+2. \Device\NPF_{...} (Ethernet)
+3. \Device\NPF_Loopback (Adapter for loopback traffic capture)
+```
+
+如果 Vision Pro/手机/客户端通过 Wi-Fi 访问 Windows 服务器，选 `Wi-Fi` 那个编号。如果客户端和服务端都在同一台 Windows 机器上，选 `Npcap Loopback Adapter`。
+
+**3. 查看支持的时间戳类型**
+把 `<interface_id>` 换成上一步的编号：
+
+```powershell
+& "$WIRESHARK\dumpcap.exe" -i <interface_id> --list-time-stamp-types
+```
+
+优先用：
+
+```text
+host_hiprec
+```
+
+如果不支持，试：
+
+```text
+host_hiprec_unsynced
+```
+
+再不行就不指定 timestamp type。
+
+**4. 开始抓包**
+服务端当前 WBest UDP 端口是 `9999`。开始抓客户端到服务器方向的包：
+
+```powershell
+& "$WIRESHARK\dumpcap.exe" -i <interface_id> --time-stamp-type host_hiprec -f "udp dst port 9999" -s 2000 -B 64 -w "$env:USERPROFILE\Desktop\wbest.pcapng"
+```
+
+如果 `host_hiprec` 报错，改成：
+
+```powershell
+& "$WIRESHARK\dumpcap.exe" -i <interface_id> --time-stamp-type host_hiprec_unsynced -f "udp dst port 9999" -s 2000 -B 64 -w "$env:USERPROFILE\Desktop\wbest.pcapng"
+```
+
+如果还报错，就用：
+
+```powershell
+& "$WIRESHARK\dumpcap.exe" -i <interface_id> -f "udp dst port 9999" -s 2000 -B 64 -w "$env:USERPROFILE\Desktop\wbest.pcapng"
+```
+
+然后运行你的 app，让它完成几轮 network probing。完成后在 PowerShell 里按 `Ctrl+C` 停止抓包。
+
+**5. 导出 TSV**
+把 pcapng 转成脚本可读的 TSV：
+
+```powershell
+& "$WIRESHARK\tshark.exe" -r "$env:USERPROFILE\Desktop\wbest.pcapng" -Y "udp.dstport == 9999" -T fields -E header=y -E separator=/t -e frame.number -e frame.time_epoch -e ip.src -e udp.srcport -e ip.dst -e udp.dstport -e udp.length -e udp.payload -e data.data | Set-Content -Encoding utf8 "$env:USERPROFILE\Desktop\wbest_udp.tsv"
+```
+
+**6. 用我加的脚本分析**
+在 WSL 或你的终端里运行：
+
+```bash
+python3 /mnt/c/Users/Jan/Downloads/GroundingDINO/tools/parse_wbest_capture_tsv.py /mnt/c/Users/Jan/Desktop/wbest_udp.tsv --packet-bytes 1500
+```
+
+如果你用 Windows Python，也可以：
+
+```powershell
+python C:\Users\Jan\Downloads\GroundingDINO\tools\parse_wbest_capture_tsv.py C:\Users\Jan\Desktop\wbest_udp.tsv --packet-bytes 1500
+```
+
+输出会类似：
+
+```text
+[WBest][Capture][Summary] round=... valid_pairs=30/30 Ce=520.33Mbps gap_lt_50us=27 ci_300_1000=24 missing=0 reordered=0 seq_mismatch=0
+[WBest][Capture][Detail] round=... pair=01 frame=(10,11) seq=(1,2) expected=(1,2) gap=24.10us Ci=497.93Mbps flags=gap_lt_50us,ci_300_1000
+```
+
+**判读方式**
+如果 Npcap 输出也显示大量 `gap_lt_50us` 和 `Ci=300–1000Mbps`，说明高 `Ce` 不是 Python `asyncio` 独有问题，可能是 Windows/Npcap/NIC 层批量时间戳或真实接收间隔就很短。
+
+如果 Npcap 输出的 gap 明显更大，而服务端日志仍是大量 `20–30us`，就基本确认 Python `datagram_received()` 的 `time.perf_counter_ns()` 太晚，受 socket buffer/event loop 批处理影响，不能用于 WBest packet-pair 时间戳。
+
+如果 `reordered > 0` 或 `seq_mismatch > 0`，说明 packet pair 的顺序或解析有问题，需要先修包序列/分组逻辑。
+
+参考文档：Npcap timestamp 类型说明 https://npcap.com/guide/npcap-api.html ，dumpcap 参数说明 https://www.wireshark.org/docs/man-pages/dumpcap.html ，tshark 字段导出说明 https://www.wireshark.org/docs/man-pages/tshark.html 。
