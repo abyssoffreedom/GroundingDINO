@@ -71,30 +71,44 @@ host_hiprec_unsynced
 
 然后运行你的 app，让它完成几轮 network probing。完成后在 PowerShell 里按 `Ctrl+C` 停止抓包。
 
-**5. 导出 TSV**
-把 pcapng 转成脚本可读的 TSV：
+**5. 分析 pcapng**
+推荐直接分析 pcapng。当前 WBest 的 `--packet-bytes 1500` 会让 UDP datagram 超过普通 Ethernet MTU，从而发生 IP fragmentation；直接读 pcapng 可以从 UDP 首片里解析 WBest header，不需要重新导出 TSV。
 
-```powershell
-& "$WIRESHARK\tshark.exe" -r "$env:USERPROFILE\Desktop\wbest.pcapng" -Y "udp.dstport == 9999" -T fields -E header=y -E separator=/t -e frame.number -e frame.time_epoch -e ip.src -e udp.srcport -e ip.dst -e udp.dstport -e udp.length -e udp.payload -e data.data | Set-Content -Encoding utf8 "$env:USERPROFILE\Desktop\wbest_udp.tsv"
-```
-
-**6. 用我加的脚本分析**
 在 WSL 或你的终端里运行：
 
 ```bash
-python3 /mnt/c/Users/Jan/Downloads/GroundingDINO/tools/parse_wbest_capture_tsv.py /mnt/c/Users/Jan/Desktop/wbest_udp.tsv --packet-bytes 1500
+python3 tools/parse_wbest_capture_tsv.py /mnt/c/Users/EmVis/Desktop/wbest.pcapng --packet-bytes 1500
+```
+
+只看每轮摘要：
+
+```bash
+python3 tools/parse_wbest_capture_tsv.py /mnt/c/Users/EmVis/Desktop/wbest.pcapng --packet-bytes 1500 --summary-only
 ```
 
 如果你用 Windows Python，也可以：
 
 ```powershell
-python C:\Users\Jan\Downloads\GroundingDINO\tools\parse_wbest_capture_tsv.py C:\Users\Jan\Desktop\wbest_udp.tsv --packet-bytes 1500
+python "C:\Users\EmVis\Shuyang's minor thesis\GroundingDINO\tools\parse_wbest_capture_tsv.py" "$env:USERPROFILE\Desktop\wbest.pcapng" --packet-bytes 1500
+```
+
+**6. 可选：导出 TSV**
+只有 packet-pair 没有发生 IP fragmentation 时，TSV 导出才适合直接分析。比如把 probe payload 调小到不超过 1472 bytes 后，可以把 pcapng 转成 TSV：
+
+```powershell
+& "$WIRESHARK\tshark.exe" -r "$env:USERPROFILE\Desktop\wbest.pcapng" -Y "udp.dstport == 9999" -T fields -E header=y -E separator=/t -e frame.number -e frame.time_epoch -e ip.src -e udp.srcport -e ip.dst -e udp.dstport -e udp.length -e udp.payload -e data.data | Set-Content -Encoding utf8 "$env:USERPROFILE\Desktop\wbest_udp.tsv"
+```
+
+然后运行：
+
+```bash
+python3 tools/parse_wbest_capture_tsv.py /mnt/c/Users/EmVis/Desktop/wbest_udp.tsv --packet-bytes 1500
 ```
 
 输出会类似：
 
 ```text
-[WBest][Capture][Summary] round=... valid_pairs=30/30 Ce=520.33Mbps gap_lt_50us=27 ci_300_1000=24 missing=0 reordered=0 seq_mismatch=0
+[WBest][Capture][Summary] round=... valid_pairs=30/30 Ce=520.33Mbps gap_lt_50us=27 non_positive_gap=0 ci_300_1000=24 missing=0 reordered=0 seq_mismatch=0
 [WBest][Capture][Detail] round=... pair=01 frame=(10,11) seq=(1,2) expected=(1,2) gap=24.10us Ci=497.93Mbps flags=gap_lt_50us,ci_300_1000
 ```
 
