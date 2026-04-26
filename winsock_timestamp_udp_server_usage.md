@@ -96,6 +96,7 @@ cd "C:\Users\EmVis\Shuyang's minor thesis\GroundingDINO"
 $env:NETWORK_PROBE_USE_WINSOCK_TIMESTAMP="1"
 $env:NETWORK_PROBE_MIN_PAIR_GAP_US="0"
 $env:NETWORK_PROBE_MIN_VALID_PAIRS="1"
+$env:NETWORK_PROBE_TIMESTAMP_SOURCE="auto"
 
 uvicorn server.inference_worker:app --host 0.0.0.0 --port 8000
 ```
@@ -120,6 +121,7 @@ cd "C:\Users\EmVis\Shuyang's minor thesis\GroundingDINO"
 $env:NETWORK_PROBE_USE_WINSOCK_TIMESTAMP="1"
 $env:NETWORK_PROBE_MIN_PAIR_GAP_US="50"
 $env:NETWORK_PROBE_MIN_VALID_PAIRS="15"
+$env:NETWORK_PROBE_TIMESTAMP_SOURCE="auto"
 
 uvicorn server.inference_worker:app --host 0.0.0.0 --port 8000
 ```
@@ -156,6 +158,22 @@ Default: 1.
 Minimum number of valid packet-pair samples required for a successful packet-pair summary.
 ```
 
+```text
+NETWORK_PROBE_TIMESTAMP_SOURCE
+Default: auto.
+Controls which receive timestamp the Winsock helper uses.
+
+auto
+Use Winsock SO_TIMESTAMP when it is present and non-zero; otherwise fall back to app-level QPC receive time.
+
+socket
+Prefer Winsock SO_TIMESTAMP. A zero SO_TIMESTAMP is still treated as invalid and falls back to app-level QPC receive time.
+
+app
+Ignore SO_TIMESTAMP for WBest timing and use the helper's app-level QPC receive time.
+This is not kernel timestamping, but it is useful when SO_TIMESTAMP returns identical timestamps for every packet pair.
+```
+
 Examples:
 
 ```powershell
@@ -165,6 +183,10 @@ $env:NETWORK_PROBE_USE_WINSOCK_TIMESTAMP="0"
 ```powershell
 $env:NETWORK_PROBE_MIN_PAIR_GAP_US="50"
 $env:NETWORK_PROBE_MIN_VALID_PAIRS="15"
+```
+
+```powershell
+$env:NETWORK_PROBE_TIMESTAMP_SOURCE="app"
 ```
 
 ## 8. Validation Logs
@@ -238,6 +260,16 @@ non_positive_gap still high
 ```
 
 This means Winsock is returning timestamps, but the Windows/NIC/Wi-Fi receive path is still batching packets or assigning identical timestamps. Ce is still not reliable.
+
+If this happens, run one diagnostic pass with:
+
+```powershell
+$env:NETWORK_PROBE_TIMESTAMP_SOURCE="app"
+$env:NETWORK_PROBE_MIN_PAIR_GAP_US="0"
+$env:NETWORK_PROBE_MIN_VALID_PAIRS="1"
+```
+
+If UI data returns in `app` mode, the protocol path is working and the problem is specifically the Winsock `SO_TIMESTAMP` values.
 
 Unsupported result:
 
@@ -338,6 +370,7 @@ Then decide whether `50 us / 15 pairs` is too strict for the current network.
 $env:NETWORK_PROBE_USE_WINSOCK_TIMESTAMP="1"
 $env:NETWORK_PROBE_MIN_PAIR_GAP_US="0"
 $env:NETWORK_PROBE_MIN_VALID_PAIRS="1"
+$env:NETWORK_PROBE_TIMESTAMP_SOURCE="auto"
 uvicorn server.inference_worker:app --host 0.0.0.0 --port 8000
 ```
 

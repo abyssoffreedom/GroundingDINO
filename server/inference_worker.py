@@ -158,6 +158,10 @@ def _make_winsock_udp_server_command() -> Optional[List[str]]:
     if min_valid_pairs:
         command.extend(["--min-valid-pairs", min_valid_pairs])
 
+    timestamp_source = os.environ.get("NETWORK_PROBE_TIMESTAMP_SOURCE")
+    if timestamp_source:
+        command.extend(["--timestamp-source", timestamp_source])
+
     return command
 
 
