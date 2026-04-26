@@ -64,14 +64,14 @@ If `cl` is not recognized, the Visual Studio build environment is not initialize
 From the Windows native tools terminal:
 
 ```powershell
-cd C:\Users\Jan\Downloads\GroundingDINO
+cd "C:\Users\EmVis\Shuyang's minor thesis\GroundingDINO"
 powershell -ExecutionPolicy Bypass -File .\tools\build_winsock_timestamp_udp_server.ps1
 ```
 
 Expected output:
 
 ```text
-Built C:\Users\Jan\Downloads\GroundingDINO\server\winsock_timestamp_udp_server.exe
+Built C:\Users\EmVis\Shuyang's minor thesis\GroundingDINO\server\winsock_timestamp_udp_server.exe
 ```
 
 Confirm the binary exists:
@@ -91,7 +91,7 @@ True
 First run without filtering. This tells you whether Winsock timestamping actually improves the packet-pair gaps.
 
 ```powershell
-cd C:\Users\Jan\Downloads\GroundingDINO
+cd "C:\Users\EmVis\Shuyang's minor thesis\GroundingDINO"
 
 $env:NETWORK_PROBE_USE_WINSOCK_TIMESTAMP="1"
 $env:NETWORK_PROBE_MIN_PAIR_GAP_US="0"
@@ -115,7 +115,7 @@ If you do not see `[WBest][Winsock]`, the helper is not running.
 If raw mode still produces extremely small or zero gaps, use filtering:
 
 ```powershell
-cd C:\Users\Jan\Downloads\GroundingDINO
+cd "C:\Users\EmVis\Shuyang's minor thesis\GroundingDINO"
 
 $env:NETWORK_PROBE_USE_WINSOCK_TIMESTAMP="1"
 $env:NETWORK_PROBE_MIN_PAIR_GAP_US="50"

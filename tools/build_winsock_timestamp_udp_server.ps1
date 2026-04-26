@@ -12,7 +12,7 @@ if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
     Write-Error "cl.exe was not found. Run this script from 'x64 Native Tools Command Prompt for VS' or a PowerShell where Visual Studio build tools are initialized."
 }
 
-$Flags = @("/std:c++17", "/EHsc", "/W4", "/DWIN32_LEAN_AND_MEAN")
+$Flags = @("/std:c++17", "/EHsc", "/W4", "/DWIN32_LEAN_AND_MEAN", "/DNOMINMAX")
 if ($Configuration -ieq "Release") {
     $Flags += @("/O2", "/DNDEBUG")
 } else {
@@ -20,5 +20,9 @@ if ($Configuration -ieq "Release") {
 }
 
 & cl.exe @Flags $Source "/Fe:$Output" "Ws2_32.lib"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "cl.exe failed with exit code $LASTEXITCODE"
+    exit $LASTEXITCODE
+}
 
 Write-Host "Built $Output"
