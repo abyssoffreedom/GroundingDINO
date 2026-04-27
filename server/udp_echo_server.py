@@ -6,9 +6,7 @@ import uuid
 
 LATENCY_MESSAGE_TYPE = 1
 WBEST_MESSAGE_TYPE = 2
-PATHMON_MESSAGE_TYPE = 3
 WBEST_ROUND_STATE_TTL_NS = 10_000_000_000
-PATHMON_ROUND_STATE_TTL_NS = 10_000_000_000
 SUSPICIOUS_PAIR_GAP_US = 50.0
 SUSPICIOUS_CI_LOW_MBPS = 300.0
 SUSPICIOUS_CI_HIGH_MBPS = 1000.0
@@ -18,19 +16,11 @@ LATENCY_RESPONSE_STRUCT = struct.Struct("!BIQQ")
 WBEST_REQUEST_STRUCT = struct.Struct("!BB16sIIIB")
 WBEST_PAIR_SUMMARY_RESPONSE_STRUCT = struct.Struct("!BB16sBId")
 WBEST_FINAL_SUMMARY_RESPONSE_STRUCT = struct.Struct("!BB16sBIIQddddd")
-PATHMON_REQUEST_STRUCT = struct.Struct("!BB16sIIIB")
-PATHMON_SUMMARY_RESPONSE_HEADER_STRUCT = struct.Struct("!BB16sBIIQd")
-PATHMON_SUMMARY_RECORD_STRUCT = struct.Struct("!IQ")
 
 WBEST_STAGE_PACKET_PAIR = 1
 WBEST_STAGE_PACKET_PAIR_SUMMARY = 2
 WBEST_STAGE_PACKET_TRAIN = 3
 WBEST_STAGE_FINAL_SUMMARY = 4
-
-PATHMON_STAGE_JITTER_PACKET = 1
-PATHMON_STAGE_JITTER_SUMMARY = 2
-PATHMON_STAGE_BANDWIDTH_PACKET = 3
-PATHMON_STAGE_BANDWIDTH_SUMMARY = 4
 
 
 class WBestRoundState:
@@ -47,24 +37,10 @@ class WBestRoundState:
         self.last_updated_perf_ns = now_perf_ns
 
 
-class PathMonRoundState:
-    def __init__(self, created_perf_ns: int):
-        self.packet_size_bytes = 0
-        self.jitter_records = {}
-        self.bandwidth_records = {}
-        self.expected_jitter_packets = 0
-        self.expected_bandwidth_packets = 0
-        self.last_updated_perf_ns = created_perf_ns
-
-    def touch(self, now_perf_ns: int):
-        self.last_updated_perf_ns = now_perf_ns
-
-
 class UDPEchoProtocol(asyncio.DatagramProtocol):
     def __init__(self):
         self.transport = None
         self.wbest_round_states = {}
-        self.pathmon_round_states = {}
 
     def connection_made(self, transport):
         self.transport = transport
@@ -80,10 +56,6 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
 
         if message_type == WBEST_MESSAGE_TYPE:
             self._handle_wbest_probe(data, addr)
-            return
-
-        if message_type == PATHMON_MESSAGE_TYPE:
-            self._handle_pathmon_probe(data, addr)
 
     def _handle_latency_probe(self, data, addr):
         try:
@@ -148,58 +120,6 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
                 addr=addr,
             )
 
-    def _handle_pathmon_probe(self, data, addr):
-        try:
-            message_type, stage, round_id_bytes, sequence, _group_id, total_count, _index_in_group = (
-                PATHMON_REQUEST_STRUCT.unpack_from(data)
-            )
-        except struct.error:
-            return
-
-        arrival_perf_ns = time.perf_counter_ns()
-        self._cleanup_stale_pathmon_round_states(arrival_perf_ns)
-
-        if stage == PATHMON_STAGE_JITTER_PACKET:
-            self._record_pathmon_packet(
-                round_id_bytes=round_id_bytes,
-                stage=stage,
-                sequence=sequence,
-                packet_count=total_count,
-                packet_size_bytes=len(data),
-                arrival_perf_ns=arrival_perf_ns,
-            )
-            return
-
-        if stage == PATHMON_STAGE_JITTER_SUMMARY:
-            self._respond_with_pathmon_summary(
-                message_type=message_type,
-                stage=stage,
-                round_id_bytes=round_id_bytes,
-                packet_count=total_count,
-                addr=addr,
-            )
-            return
-
-        if stage == PATHMON_STAGE_BANDWIDTH_PACKET:
-            self._record_pathmon_packet(
-                round_id_bytes=round_id_bytes,
-                stage=stage,
-                sequence=sequence,
-                packet_count=total_count,
-                packet_size_bytes=len(data),
-                arrival_perf_ns=arrival_perf_ns,
-            )
-            return
-
-        if stage == PATHMON_STAGE_BANDWIDTH_SUMMARY:
-            self._respond_with_pathmon_summary(
-                message_type=message_type,
-                stage=stage,
-                round_id_bytes=round_id_bytes,
-                packet_count=total_count,
-                addr=addr,
-            )
-
     def _record_packet_pair(
         self,
         round_id_bytes: bytes,
@@ -218,101 +138,6 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
         pair_record = state.packet_pair_records.setdefault(pair_id, {})
         pair_record[f"seq{index_in_pair}"] = sequence
         pair_record[f"recv{index_in_pair}"] = arrival_perf_ns
-
-    def _record_pathmon_packet(
-        self,
-        round_id_bytes: bytes,
-        stage: int,
-        sequence: int,
-        packet_count: int,
-        packet_size_bytes: int,
-        arrival_perf_ns: int,
-    ):
-        if sequence <= 0:
-            return
-
-        state = self._get_or_create_pathmon_round_state(round_id_bytes, arrival_perf_ns)
-        state.packet_size_bytes = max(state.packet_size_bytes, packet_size_bytes)
-        state.touch(arrival_perf_ns)
-
-        if stage == PATHMON_STAGE_JITTER_PACKET:
-            state.expected_jitter_packets = max(state.expected_jitter_packets, packet_count)
-            state.jitter_records[sequence] = arrival_perf_ns
-            return
-
-        if stage == PATHMON_STAGE_BANDWIDTH_PACKET:
-            state.expected_bandwidth_packets = max(state.expected_bandwidth_packets, packet_count)
-            state.bandwidth_records[sequence] = arrival_perf_ns
-
-    def _respond_with_pathmon_summary(
-        self,
-        message_type: int,
-        stage: int,
-        round_id_bytes: bytes,
-        packet_count: int,
-        addr,
-    ):
-        state = self.pathmon_round_states.get(round_id_bytes)
-        if state is not None:
-            state.touch(time.perf_counter_ns())
-
-        if stage == PATHMON_STAGE_JITTER_SUMMARY:
-            records = state.jitter_records if state is not None else {}
-            expected_count = max(
-                packet_count,
-                state.expected_jitter_packets if state is not None else 0,
-                len(records),
-            )
-        else:
-            records = state.bandwidth_records if state is not None else {}
-            expected_count = max(
-                packet_count,
-                state.expected_bandwidth_packets if state is not None else 0,
-                len(records),
-            )
-
-        sorted_records = sorted(records.items(), key=lambda item: item[0])
-        received_count = len(sorted_records)
-        first_receive_time_ns = sorted_records[0][1] if sorted_records else 0
-        loss_rate = (
-            max(expected_count - received_count, 0) / expected_count
-            if expected_count > 0
-            else 0.0
-        )
-        success = received_count > 0
-
-        response = bytearray(
-            PATHMON_SUMMARY_RESPONSE_HEADER_STRUCT.pack(
-                message_type,
-                stage,
-                round_id_bytes,
-                int(success),
-                received_count,
-                expected_count,
-                first_receive_time_ns,
-                float(loss_rate),
-            )
-        )
-        for sequence, receive_time_ns in sorted_records:
-            response.extend(
-                PATHMON_SUMMARY_RECORD_STRUCT.pack(
-                    sequence,
-                    max(receive_time_ns - first_receive_time_ns, 0),
-                )
-            )
-
-        self.transport.sendto(bytes(response), addr)
-        self._log_pathmon_summary(
-            round_id_bytes=round_id_bytes,
-            stage=stage,
-            packet_size_bytes=state.packet_size_bytes if state is not None else 0,
-            received_count=received_count,
-            expected_count=expected_count,
-            loss_rate=loss_rate,
-        )
-
-        if stage == PATHMON_STAGE_BANDWIDTH_SUMMARY:
-            self.pathmon_round_states.pop(round_id_bytes, None)
 
     def _respond_with_packet_pair_summary(self, message_type: int, round_id_bytes: bytes, addr):
         state = self.wbest_round_states.get(round_id_bytes)
@@ -490,13 +315,6 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
             self.wbest_round_states[round_id_bytes] = state
         return state
 
-    def _get_or_create_pathmon_round_state(self, round_id_bytes: bytes, now_perf_ns: int):
-        state = self.pathmon_round_states.get(round_id_bytes)
-        if state is None:
-            state = PathMonRoundState(now_perf_ns)
-            self.pathmon_round_states[round_id_bytes] = state
-        return state
-
     def _build_packet_pair_analysis(self, state: WBestRoundState):
         details = []
         capacity_samples_mbps = []
@@ -632,29 +450,6 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
         except ValueError:
             return round_id_bytes.hex()
 
-    def _log_pathmon_summary(
-        self,
-        round_id_bytes: bytes,
-        stage: int,
-        packet_size_bytes: int,
-        received_count: int,
-        expected_count: int,
-        loss_rate: float,
-    ):
-        stage_name = (
-            "jitter"
-            if stage == PATHMON_STAGE_JITTER_SUMMARY
-            else "bandwidth"
-        )
-        print(
-            "[PathMon][Summary] "
-            f"round={self._format_round_id(round_id_bytes)} "
-            f"stage={stage_name} "
-            f"payload_bytes={packet_size_bytes} "
-            f"received={received_count}/{expected_count} "
-            f"loss={loss_rate:.3f}"
-        )
-
     def _cleanup_stale_wbest_round_states(self, now_perf_ns: int):
         stale_round_ids = [
             round_id_bytes
@@ -663,15 +458,6 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
         ]
         for round_id_bytes in stale_round_ids:
             self.wbest_round_states.pop(round_id_bytes, None)
-
-    def _cleanup_stale_pathmon_round_states(self, now_perf_ns: int):
-        stale_round_ids = [
-            round_id_bytes
-            for round_id_bytes, state in self.pathmon_round_states.items()
-            if (now_perf_ns - state.last_updated_perf_ns) > PATHMON_ROUND_STATE_TTL_NS
-        ]
-        for round_id_bytes in stale_round_ids:
-            self.pathmon_round_states.pop(round_id_bytes, None)
 
 
 async def start_udp_echo_server(host: str = "0.0.0.0", port: int = 9999):
