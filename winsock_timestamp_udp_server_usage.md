@@ -8,7 +8,7 @@ The original Python UDP probe server records packet arrival time inside `asyncio
 
 The native helper in `server/winsock_timestamp_udp_server.cpp` keeps the same UDP probe protocol on port `9999`, but records arrival time immediately after `recvfrom()` returns using `QueryPerformanceCounter`.
 
-The helper no longer uses Winsock kernel/socket timestamping. `SIO_TIMESTAMPING`, `SO_TIMESTAMP`, `WSARecvMsg`, `NETWORK_PROBE_TIMESTAMP_SOURCE`, and `--timestamp-source` have been removed because this machine's network path did not provide usable kernel timestamps.
+The helper records app-level receive timestamps using `QueryPerformanceCounter`.
 
 Current timestamp source:
 
@@ -65,14 +65,14 @@ If `cl` is not recognized, the Visual Studio build environment is not initialize
 From the Windows native tools terminal:
 
 ```powershell
-cd "C:\Users\Jan\Downloads\GroundingDINO"
+cd "C:\Users\EmVis\Shuyang's minor thesis\GroundingDINO"
 powershell -ExecutionPolicy Bypass -File .\tools\build_winsock_timestamp_udp_server.ps1
 ```
 
 Expected output:
 
 ```text
-Built C:\Users\Jan\Downloads\GroundingDINO\server\winsock_timestamp_udp_server.exe
+Built C:\Users\EmVis\Shuyang's minor thesis\GroundingDINO\server\winsock_timestamp_udp_server.exe
 ```
 
 Confirm the binary exists:
@@ -92,7 +92,7 @@ True
 Use the native helper with app-level QPC receive timestamps:
 
 ```powershell
-cd "C:\Users\Jan\Downloads\GroundingDINO"
+cd "C:\Users\EmVis\Shuyang's minor thesis\GroundingDINO"
 
 $env:NETWORK_PROBE_USE_WINSOCK_TIMESTAMP="1"
 $env:NETWORK_PROBE_MIN_PAIR_GAP_US="0"
@@ -159,15 +159,6 @@ NETWORK_PROBE_HIGH_PRIORITY
 Default: 0.
 Set to 1 to run the helper process as HIGH_PRIORITY_CLASS and its receive thread as THREAD_PRIORITY_HIGHEST. This reduces app-level scheduler stalls, but it cannot replace kernel/NIC timestamps.
 ```
-
-Removed:
-
-```text
-NETWORK_PROBE_TIMESTAMP_SOURCE
---timestamp-source
-```
-
-These are ignored by `server/inference_worker.py` and are no longer accepted by the C++ helper.
 
 ## 7. Validation Logs
 
