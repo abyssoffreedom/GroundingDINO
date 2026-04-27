@@ -146,6 +146,9 @@ struct FinalSummary {
     double rawEffectiveCapacityMbps = 0.0;
     double shaperCapacityMbps = 0.0;
     bool shaperDetected = false;
+    bool receiveQueueCompressionDetected = false;
+    double receiveQueueCompressionRatio = 0.0;
+    double clientActualSendRateMbps = 0.0;
     double shaperSingleModelBic = 0.0;
     double shaperTokenBucketModelBic = 0.0;
     double shaperBicImprovement = 0.0;
@@ -158,6 +161,11 @@ struct FinalSummary {
     double rawMeanTrainGapNs = 0.0;
     std::vector<int64_t> trainGapsNs;
     std::vector<uint32_t> trainGapStartSequences;
+};
+
+struct FinalSummaryRequestDiagnostics {
+    uint64_t clientActualMeanSendGapNs = 0;
+    uint64_t clientActualMedianSendGapNs = 0;
 };
 
 uint32_t readU32BE(const uint8_t* data) {
@@ -497,16 +505,46 @@ bool detectTokenBucketShaper(
     const std::vector<int64_t>& trainGapsNs,
     double rawEffectiveCapacityMbps,
     double shaperCapacityMbps,
+    int packetSizeBytes,
+    uint64_t clientActualMeanSendGapNs,
     double& singleModelBic,
     double& tokenBucketModelBic,
-    double& bicImprovement
+    double& bicImprovement,
+    bool& receiveQueueCompressionDetected,
+    double& receiveQueueCompressionRatio
 ) {
     singleModelBic = 0.0;
     tokenBucketModelBic = 0.0;
     bicImprovement = 0.0;
+    receiveQueueCompressionDetected = false;
+    receiveQueueCompressionRatio = 0.0;
 
     if (rawEffectiveCapacityMbps <= 0.0 || shaperCapacityMbps <= 0.0) {
         return false;
+    }
+
+    std::vector<int64_t> sortedGaps = trainGapsNs;
+    std::sort(sortedGaps.begin(), sortedGaps.end());
+    if (sortedGaps.empty()) {
+        return false;
+    }
+
+    const int64_t medianGapNs = sortedGaps[sortedGaps.size() / 2];
+    const double rawPacingGapNs =
+        (static_cast<double>(packetSizeBytes) * 8.0 * 1'000.0) /
+        rawEffectiveCapacityMbps;
+    const double referenceGapNs = clientActualMeanSendGapNs > 0
+        ? static_cast<double>(clientActualMeanSendGapNs)
+        : rawPacingGapNs;
+
+    if (referenceGapNs > 0.0) {
+        receiveQueueCompressionRatio = static_cast<double>(medianGapNs) / referenceGapNs;
+        // If most received gaps are far below the sender pacing interval, the
+        // server is observing socket-queue drain timing rather than path service.
+        receiveQueueCompressionDetected = receiveQueueCompressionRatio < 0.25;
+        if (receiveQueueCompressionDetected) {
+            return false;
+        }
     }
 
     // Use WBest's own zero-threshold condition as the rate-separation gate.
@@ -769,8 +807,25 @@ private:
         }
 
         if (stage == kWBestStageFinalSummary) {
-            respondWithFinalSummary(roundId, totalCount, datagram);
+            respondWithFinalSummary(
+                roundId,
+                totalCount,
+                parseFinalSummaryRequestDiagnostics(datagram),
+                datagram
+            );
         }
+    }
+
+    FinalSummaryRequestDiagnostics parseFinalSummaryRequestDiagnostics(const ReceivedDatagram& datagram) const {
+        FinalSummaryRequestDiagnostics diagnostics;
+        constexpr size_t diagnosticsOffset = 31;
+        if (datagram.data.size() < diagnosticsOffset + 16) {
+            return diagnostics;
+        }
+
+        diagnostics.clientActualMeanSendGapNs = readU64BE(datagram.data.data() + diagnosticsOffset);
+        diagnostics.clientActualMedianSendGapNs = readU64BE(datagram.data.data() + diagnosticsOffset + 8);
+        return diagnostics;
     }
 
     RoundState& getOrCreateRoundState(const RoundId& roundId, int64_t nowNs) {
@@ -864,6 +919,7 @@ private:
     void respondWithFinalSummary(
         const RoundId& roundId,
         uint32_t packetCount,
+        const FinalSummaryRequestDiagnostics& requestDiagnostics,
         const ReceivedDatagram& datagram
     ) {
         bool success = false;
@@ -884,7 +940,7 @@ private:
                 }
             }
 
-            if (computeFinalSummary(state, summary)) {
+            if (computeFinalSummary(state, requestDiagnostics, summary)) {
                 success = true;
                 logTrainAnalysis(roundId, state, summary);
             }
@@ -977,7 +1033,11 @@ private:
         return analysis;
     }
 
-    bool computeFinalSummary(const RoundState& state, FinalSummary& summary) const {
+    bool computeFinalSummary(
+        const RoundState& state,
+        const FinalSummaryRequestDiagnostics& requestDiagnostics,
+        FinalSummary& summary
+    ) const {
         if (state.packetSizeBytes <= 0 || !state.hasEffectiveCapacity || state.effectiveCapacityMbps <= 0.0) {
             return false;
         }
@@ -1030,13 +1090,32 @@ private:
             (static_cast<double>(state.packetSizeBytes) * 8.0) /
             calculationGapSeconds /
             1'000'000.0;
+        if (requestDiagnostics.clientActualMeanSendGapNs > 0) {
+            const double clientActualSendGapSeconds =
+                static_cast<double>(requestDiagnostics.clientActualMeanSendGapNs) /
+                1'000'000'000.0;
+            if (clientActualSendGapSeconds > 0.0) {
+                summary.clientActualSendRateMbps =
+                    (static_cast<double>(state.packetSizeBytes) * 8.0) /
+                    clientActualSendGapSeconds /
+                    1'000'000.0;
+                summary.shaperCapacityMbps = std::min(
+                    summary.shaperCapacityMbps,
+                    summary.clientActualSendRateMbps
+                );
+            }
+        }
         summary.shaperDetected = detectTokenBucketShaper(
             gapsNs,
             summary.rawEffectiveCapacityMbps,
             summary.shaperCapacityMbps,
+            state.packetSizeBytes,
+            requestDiagnostics.clientActualMeanSendGapNs,
             summary.shaperSingleModelBic,
             summary.shaperTokenBucketModelBic,
-            summary.shaperBicImprovement
+            summary.shaperBicImprovement,
+            summary.receiveQueueCompressionDetected,
+            summary.receiveQueueCompressionRatio
         );
         summary.effectiveCapacityMbps = summary.shaperDetected
             ? std::min(summary.rawEffectiveCapacityMbps, summary.shaperCapacityMbps)
@@ -1096,6 +1175,11 @@ private:
             << "C_shaper=" << std::fixed << std::setprecision(2) << summary.shaperCapacityMbps << "Mbps "
             << "R=" << std::fixed << std::setprecision(2) << summary.achievableThroughputMbps << "Mbps "
             << "shaper_detected=" << (summary.shaperDetected ? 1 : 0) << ' '
+            << "queue_compression=" << (summary.receiveQueueCompressionDetected ? 1 : 0) << ' '
+            << "queue_compression_ratio=" << std::fixed << std::setprecision(3)
+            << summary.receiveQueueCompressionRatio << ' '
+            << "client_send_rate=" << std::fixed << std::setprecision(2)
+            << summary.clientActualSendRateMbps << "Mbps "
             << "shaper_bic_delta=" << std::fixed << std::setprecision(2) << summary.shaperBicImprovement << ' '
             << "aggregation=" << trainGapAggregationName(options_.trainGapAggregation) << ' '
             << "trim_ratio=" << options_.trainGapTrimRatio << ' '

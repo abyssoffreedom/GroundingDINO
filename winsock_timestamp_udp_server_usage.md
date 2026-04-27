@@ -171,7 +171,7 @@ Packet-pair summary:
 Packet-train summary:
 
 ```text
-[WBest][Winsock][Train][Summary] round=... payload_bytes=1400 received_train=30/30 Ce=...Mbps Ce_raw=...Mbps C_shaper=...Mbps R=...Mbps shaper_detected=... shaper_bic_delta=... aggregation=trimmed_mean trim_ratio=0.10 gap_count=29 gap_min=...us gap_median=...us gap_mean=...us gap_calc=...us gap_p90=...us gap_max=...us timestamp_source=app_qpc
+[WBest][Winsock][Train][Summary] round=... payload_bytes=1400 received_train=30/30 Ce=...Mbps Ce_raw=...Mbps C_shaper=...Mbps R=...Mbps shaper_detected=... queue_compression=... queue_compression_ratio=... client_send_rate=...Mbps shaper_bic_delta=... aggregation=trimmed_mean trim_ratio=0.10 gap_count=29 gap_min=...us gap_median=...us gap_mean=...us gap_calc=...us gap_p90=...us gap_max=...us timestamp_source=app_qpc
 [WBest][Winsock][Train][Detail] round=... gaps=1->2:...us,2->3:...us,...
 ```
 
@@ -225,6 +225,11 @@ shaper_detected
 Set to 1 when the train gap distribution fits a two-component log-normal model better than a single-component model by BIC, and the train-derived C_shaper would otherwise trigger WBest's R < Ce_raw / 2 zero threshold.
 ```
 
+```text
+queue_compression
+Set to 1 when the server's median train receive gap is far below the client's measured send gap. This means the server is probably timing socket queue drain rather than path service, so shaper correction is disabled for that round.
+```
+
 ## 8. Interpreting Results
 
 Normal high-bandwidth path:
@@ -242,6 +247,7 @@ Many tiny gaps and many long pause gaps appear in the same train.
 R is close to the configured long-term limit.
 Ce can be much larger than R because packet pairs land inside bursts.
 The helper keeps Ce_raw for diagnostics, estimates C_shaper from the train, and uses Ce=min(Ce_raw, C_shaper) for the WBest A formula.
+If queue_compression=1, the helper does not treat the round as token-bucket shaping.
 ```
 
 In that shaper case, `Ce_raw` remains a burst-capacity diagnostic while corrected `Ce` is the effective capacity used for `A` and `A_corrected`.
