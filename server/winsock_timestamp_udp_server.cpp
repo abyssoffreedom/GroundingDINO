@@ -800,8 +800,7 @@ private:
             packetSizeBytes,
             receivedCount,
             expectedCount,
-            lossRate,
-            records
+            lossRate
         );
 
         if (stage == kPathMonStageBandwidthSummary) {
@@ -1096,20 +1095,8 @@ private:
         int packetSizeBytes,
         int receivedCount,
         int expectedCount,
-        double lossRate,
-        const std::vector<std::pair<uint32_t, TrainRecord>>& records
+        double lossRate
     ) const {
-        std::vector<int64_t> gapsNs;
-        std::vector<uint32_t> gapStartSequences;
-        gapsNs.reserve(records.size() > 0 ? records.size() - 1 : 0);
-        gapStartSequences.reserve(gapsNs.capacity());
-
-        for (size_t index = 1; index < records.size(); ++index) {
-            const int64_t gapNs = records[index].second.recvNs - records[index - 1].second.recvNs;
-            gapsNs.push_back(gapNs);
-            gapStartSequences.push_back(records[index - 1].first);
-        }
-
         std::cout
             << "[PathMon][Winsock][Summary] "
             << "round=" << formatRoundId(roundId) << ' '
@@ -1117,35 +1104,8 @@ private:
             << "payload_bytes=" << packetSizeBytes << ' '
             << "received=" << receivedCount << '/' << expectedCount << ' '
             << "loss=" << std::fixed << std::setprecision(3) << lossRate << ' '
-            << "timestamp_source=app_qpc";
-
-        if (!gapsNs.empty()) {
-            const auto minMax = std::minmax_element(gapsNs.begin(), gapsNs.end());
-            std::cout
-                << ' '
-                << "gap_count=" << gapsNs.size() << ' '
-                << "gap_min=" << (static_cast<double>(*minMax.first) / 1000.0) << "us "
-                << "gap_median=" << percentileNsToUs(gapsNs, 0.5) << "us "
-                << "gap_mean=" << (static_cast<double>(meanNs(gapsNs)) / 1000.0) << "us "
-                << "gap_p90=" << percentileNsToUs(gapsNs, 0.9) << "us "
-                << "gap_max=" << (static_cast<double>(*minMax.second) / 1000.0) << "us ";
-        }
-
-        std::cout << '\n';
-
-        if (!gapsNs.empty()) {
-            const size_t tailCount = std::min<size_t>(8, gapsNs.size());
-            const auto gapBegin = gapsNs.end() - static_cast<std::ptrdiff_t>(tailCount);
-            const auto seqBegin = gapStartSequences.end() - static_cast<std::ptrdiff_t>(tailCount);
-            const std::vector<int64_t> tailGaps(gapBegin, gapsNs.end());
-            const std::vector<uint32_t> tailSequences(seqBegin, gapStartSequences.end());
-            std::cout
-                << "[PathMon][Winsock][Detail] "
-                << "round=" << formatRoundId(roundId) << ' '
-                << "stage=" << pathMonStageName(stage) << ' '
-                << "tail_gaps=" << formatGapListUs(tailSequences, tailGaps)
-                << '\n';
-        }
+            << "timestamp_source=app_qpc"
+            << '\n';
     }
 
     void logPairAnalysis(const RoundId& roundId, const RoundState& state, const PairAnalysis& analysis) const {

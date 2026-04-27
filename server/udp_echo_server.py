@@ -309,7 +309,6 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
             received_count=received_count,
             expected_count=expected_count,
             loss_rate=loss_rate,
-            sorted_records=sorted_records,
         )
 
         if stage == PATHMON_STAGE_BANDWIDTH_SUMMARY:
@@ -641,68 +640,20 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
         received_count: int,
         expected_count: int,
         loss_rate: float,
-        sorted_records,
     ):
         stage_name = (
             "jitter"
             if stage == PATHMON_STAGE_JITTER_SUMMARY
             else "bandwidth"
         )
-        gaps_ns = [
-            sorted_records[index][1] - sorted_records[index - 1][1]
-            for index in range(1, len(sorted_records))
-        ]
-        gap_fields = ""
-        if gaps_ns:
-            sorted_gaps_ns = sorted(gaps_ns)
-            gap_fields = (
-                f" gap_count={len(gaps_ns)}"
-                f" gap_min={min(gaps_ns) / 1000.0:.2f}us"
-                f" gap_median={statistics.median(gaps_ns) / 1000.0:.2f}us"
-                f" gap_mean={statistics.mean(gaps_ns) / 1000.0:.2f}us"
-                f" gap_p90={self._percentile_ns_to_us(sorted_gaps_ns, 0.9):.2f}us"
-                f" gap_max={max(gaps_ns) / 1000.0:.2f}us"
-            )
-
         print(
             "[PathMon][Summary] "
             f"round={self._format_round_id(round_id_bytes)} "
             f"stage={stage_name} "
             f"payload_bytes={packet_size_bytes} "
             f"received={received_count}/{expected_count} "
-            f"loss={loss_rate:.3f} "
-            f"timestamp_source=python_perf_counter{gap_fields}"
+            f"loss={loss_rate:.3f}"
         )
-        if gaps_ns:
-            tail_start = max(len(gaps_ns) - 8, 0)
-            tail_items = []
-            for index in range(tail_start, len(gaps_ns)):
-                sequence = sorted_records[index][0]
-                tail_items.append(
-                    f"{sequence}->{sequence + 1}:{gaps_ns[index] / 1000.0:.2f}us"
-                )
-            print(
-                "[PathMon][Detail] "
-                f"round={self._format_round_id(round_id_bytes)} "
-                f"stage={stage_name} "
-                f"tail_gaps={','.join(tail_items)}"
-            )
-
-    @staticmethod
-    def _percentile_ns_to_us(sorted_values_ns, percentile: float):
-        if not sorted_values_ns:
-            return 0.0
-        clamped = min(max(percentile, 0.0), 1.0)
-        raw_index = clamped * (len(sorted_values_ns) - 1)
-        lower_index = int(raw_index)
-        upper_index = min(lower_index + 1, len(sorted_values_ns) - 1)
-        if lower_index == upper_index:
-            return sorted_values_ns[lower_index] / 1000.0
-        fraction = raw_index - lower_index
-        return (
-            sorted_values_ns[lower_index]
-            + ((sorted_values_ns[upper_index] - sorted_values_ns[lower_index]) * fraction)
-        ) / 1000.0
 
     def _cleanup_stale_wbest_round_states(self, now_perf_ns: int):
         stale_round_ids = [

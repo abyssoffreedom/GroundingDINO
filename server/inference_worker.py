@@ -188,8 +188,9 @@ def _make_winsock_udp_server_command() -> Optional[List[str]]:
     if train_gap_trim_ratio:
         command.extend(["--train-gap-trim-ratio", train_gap_trim_ratio])
 
-    high_priority = os.environ.get("NETWORK_PROBE_HIGH_PRIORITY", "1")
-    command.extend(["--high-priority", high_priority])
+    high_priority = os.environ.get("NETWORK_PROBE_HIGH_PRIORITY")
+    if high_priority:
+        command.extend(["--high-priority", high_priority])
 
     return command
 
