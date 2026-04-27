@@ -135,7 +135,7 @@ Minimum number of valid packet-pair samples required for a successful packet-pai
 
 ```text
 NETWORK_PROBE_TRAIN_GAP_AGGREGATION
-Default: mean.
+Default: trimmed_mean.
 Controls how packet-train receive gaps are aggregated for R.
 
 mean
@@ -180,7 +180,7 @@ Packet-pair summary:
 Packet-train summary:
 
 ```text
-[WBest][Winsock][Train][Summary] round=... payload_bytes=1400 received_train=30/30 Ce=...Mbps R=...Mbps aggregation=trimmed_mean trim_ratio=0.10 gap_count=29 gap_min=...us gap_median=...us gap_mean=...us gap_calc=...us gap_p90=...us gap_max=...us timestamp_source=app_qpc
+[WBest][Winsock][Train][Summary] round=... payload_bytes=1400 received_train=30/30 Ce=...Mbps Ce_raw=...Mbps C_shaper=...Mbps R=...Mbps shaper_detected=... shaper_bic_delta=... aggregation=trimmed_mean trim_ratio=0.10 gap_count=29 gap_min=...us gap_median=...us gap_mean=...us gap_calc=...us gap_p90=...us gap_max=...us timestamp_source=app_qpc
 [WBest][Winsock][Train][Detail] round=... gaps=1->2:...us,2->3:...us,...
 ```
 
@@ -222,6 +222,18 @@ gap_mean is the raw arithmetic mean.
 gap_calc is the aggregation actually used to calculate R.
 ```
 
+```text
+Ce_raw / C_shaper / Ce
+Ce_raw is the packet-pair burst capacity.
+C_shaper is the robust train-derived shaping capacity.
+Ce is the capacity used by the WBest A formula after shaper correction.
+```
+
+```text
+shaper_detected
+Set to 1 when the train gap distribution fits a two-component log-normal model better than a single-component model by BIC, and the train-derived C_shaper would otherwise trigger WBest's R < Ce_raw / 2 zero threshold.
+```
+
 ## 8. Interpreting Results
 
 Normal high-bandwidth path:
@@ -238,10 +250,10 @@ Token-bucket or Network Link Conditioner shaping:
 Many tiny gaps and many long pause gaps appear in the same train.
 R is close to the configured long-term limit.
 Ce can be much larger than R because packet pairs land inside bursts.
-R < Ce / 2 can make WBest A and A_corrected become 0.
+The helper keeps Ce_raw for diagnostics, estimates C_shaper from the train, and uses Ce=min(Ce_raw, C_shaper) for the WBest A formula.
 ```
 
-In that shaper case, `R` is usually the better UI/adaptation signal for current upload throughput. Keep `Ce` as a burst-capacity diagnostic.
+In that shaper case, `Ce_raw` remains a burst-capacity diagnostic while corrected `Ce` is the effective capacity used for `A` and `A_corrected`.
 
 ## 9. Disable And Fallback
 
@@ -301,9 +313,9 @@ Prefer R for UI/adaptation if the train distribution clearly shows token-bucket 
 
 ### Bandwidth UI becomes zero under limited uplink
 
-If `R < Ce / 2`, the WBest available-bandwidth formula sets `A=0`, and the client currently maps UI bandwidth from `A_corrected`.
+If `R < Ce_raw / 2` and `shaper_detected=0`, the WBest available-bandwidth formula still sets `A=0`.
 
-This does not necessarily mean upload throughput is zero. Check `R` in the client/server logs. Under NLC token-bucket shaping, `R` is usually closer to the configured long-term uplink limit.
+This does not necessarily mean upload throughput is zero. Check `Ce_raw`, `C_shaper`, `R`, and the train gap distribution in the client/server logs.
 
 ## 11. Recommended Test Procedure
 

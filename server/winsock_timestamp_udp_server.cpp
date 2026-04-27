@@ -41,6 +41,8 @@ constexpr double kSuspiciousPairGapUs = 50.0;
 constexpr double kSuspiciousCiLowMbps = 300.0;
 constexpr double kSuspiciousCiHighMbps = 1000.0;
 constexpr size_t kMaxDatagramBytes = 4096;
+constexpr double kTwoPi = 6.28318530717958647692;
+constexpr double kMinGaussianVariance = 1e-6;
 
 enum class TrainGapAggregation {
     Mean,
@@ -53,7 +55,7 @@ struct ProgramOptions {
     uint16_t port = 9999;
     double minPairGapUs = 0.0;
     int minValidPairs = 1;
-    TrainGapAggregation trainGapAggregation = TrainGapAggregation::Mean;
+    TrainGapAggregation trainGapAggregation = TrainGapAggregation::TrimmedMean;
     double trainGapTrimRatio = 0.10;
     bool highPriority = false;
 };
@@ -141,6 +143,12 @@ struct FinalSummary {
     int receivedTrainPackets = 0;
     int sentTrainPackets = 0;
     uint64_t meanTrainGapNs = 0;
+    double rawEffectiveCapacityMbps = 0.0;
+    double shaperCapacityMbps = 0.0;
+    bool shaperDetected = false;
+    double shaperSingleModelBic = 0.0;
+    double shaperTokenBucketModelBic = 0.0;
+    double shaperBicImprovement = 0.0;
     double effectiveCapacityMbps = 0.0;
     double achievableThroughputMbps = 0.0;
     double availableBandwidthMbps = 0.0;
@@ -332,6 +340,187 @@ long double aggregateTrainGapNs(
     const auto end = values.end() - static_cast<std::ptrdiff_t>(trimCount);
     const std::vector<int64_t> trimmed(begin, end);
     return meanNs(trimmed);
+}
+
+double gaussianLogPdf(double value, double mean, double variance) {
+    const double safeVariance = std::max(variance, kMinGaussianVariance);
+    const double diff = value - mean;
+    return -0.5 * (std::log(kTwoPi * safeVariance) + ((diff * diff) / safeVariance));
+}
+
+double logSumExp(double left, double right) {
+    const double maxValue = std::max(left, right);
+    return maxValue + std::log(std::exp(left - maxValue) + std::exp(right - maxValue));
+}
+
+double bicFromLogLikelihood(size_t sampleCount, int parameterCount, double logLikelihood) {
+    return (static_cast<double>(parameterCount) * std::log(static_cast<double>(sampleCount))) -
+           (2.0 * logLikelihood);
+}
+
+bool singleLogNormalGapBic(const std::vector<int64_t>& gapsNs, double& bic) {
+    if (gapsNs.size() < 6) {
+        return false;
+    }
+
+    std::vector<double> logGaps;
+    logGaps.reserve(gapsNs.size());
+    for (int64_t gapNs : gapsNs) {
+        if (gapNs > 0) {
+            logGaps.push_back(std::log(static_cast<double>(gapNs)));
+        }
+    }
+    if (logGaps.size() < 6) {
+        return false;
+    }
+
+    const double mean =
+        std::accumulate(logGaps.begin(), logGaps.end(), 0.0) /
+        static_cast<double>(logGaps.size());
+    double variance = 0.0;
+    for (double value : logGaps) {
+        const double diff = value - mean;
+        variance += diff * diff;
+    }
+    variance = std::max(variance / static_cast<double>(logGaps.size()), kMinGaussianVariance);
+
+    double logLikelihood = 0.0;
+    for (double value : logGaps) {
+        logLikelihood += gaussianLogPdf(value, mean, variance);
+    }
+
+    bic = bicFromLogLikelihood(logGaps.size(), 2, logLikelihood);
+    return true;
+}
+
+bool twoComponentLogNormalGapBic(const std::vector<int64_t>& gapsNs, double& bic) {
+    if (gapsNs.size() < 6) {
+        return false;
+    }
+
+    std::vector<double> logGaps;
+    logGaps.reserve(gapsNs.size());
+    for (int64_t gapNs : gapsNs) {
+        if (gapNs > 0) {
+            logGaps.push_back(std::log(static_cast<double>(gapNs)));
+        }
+    }
+    if (logGaps.size() < 6) {
+        return false;
+    }
+
+    std::vector<double> sorted = logGaps;
+    std::sort(sorted.begin(), sorted.end());
+
+    const size_t firstIndex = sorted.size() / 3;
+    const size_t secondIndex = (2 * sorted.size()) / 3;
+    double mean1 = sorted[firstIndex];
+    double mean2 = sorted[secondIndex];
+    if (mean1 > mean2) {
+        std::swap(mean1, mean2);
+    }
+
+    const double globalMean =
+        std::accumulate(logGaps.begin(), logGaps.end(), 0.0) /
+        static_cast<double>(logGaps.size());
+    double globalVariance = 0.0;
+    for (double value : logGaps) {
+        const double diff = value - globalMean;
+        globalVariance += diff * diff;
+    }
+    globalVariance = std::max(
+        globalVariance / static_cast<double>(logGaps.size()),
+        kMinGaussianVariance
+    );
+
+    double variance1 = globalVariance;
+    double variance2 = globalVariance;
+    double weight1 = 0.5;
+
+    for (int iteration = 0; iteration < 80; ++iteration) {
+        std::vector<double> responsibilities;
+        responsibilities.reserve(logGaps.size());
+        double responsibilitySum = 0.0;
+
+        for (double value : logGaps) {
+            const double logP1 = std::log(weight1) + gaussianLogPdf(value, mean1, variance1);
+            const double logP2 = std::log(1.0 - weight1) + gaussianLogPdf(value, mean2, variance2);
+            const double responsibility = std::exp(logP1 - logSumExp(logP1, logP2));
+            responsibilities.push_back(responsibility);
+            responsibilitySum += responsibility;
+        }
+
+        const double responsibilitySum2 = static_cast<double>(logGaps.size()) - responsibilitySum;
+        if (responsibilitySum <= 1e-9 || responsibilitySum2 <= 1e-9) {
+            return false;
+        }
+
+        double newMean1 = 0.0;
+        double newMean2 = 0.0;
+        for (size_t i = 0; i < logGaps.size(); ++i) {
+            newMean1 += responsibilities[i] * logGaps[i];
+            newMean2 += (1.0 - responsibilities[i]) * logGaps[i];
+        }
+        newMean1 /= responsibilitySum;
+        newMean2 /= responsibilitySum2;
+
+        double newVariance1 = 0.0;
+        double newVariance2 = 0.0;
+        for (size_t i = 0; i < logGaps.size(); ++i) {
+            const double diff1 = logGaps[i] - newMean1;
+            const double diff2 = logGaps[i] - newMean2;
+            newVariance1 += responsibilities[i] * diff1 * diff1;
+            newVariance2 += (1.0 - responsibilities[i]) * diff2 * diff2;
+        }
+        newVariance1 = std::max(newVariance1 / responsibilitySum, kMinGaussianVariance);
+        newVariance2 = std::max(newVariance2 / responsibilitySum2, kMinGaussianVariance);
+
+        mean1 = newMean1;
+        mean2 = newMean2;
+        variance1 = newVariance1;
+        variance2 = newVariance2;
+        weight1 = std::min(std::max(responsibilitySum / static_cast<double>(logGaps.size()), 1e-6), 1.0 - 1e-6);
+    }
+
+    double logLikelihood = 0.0;
+    for (double value : logGaps) {
+        const double logP1 = std::log(weight1) + gaussianLogPdf(value, mean1, variance1);
+        const double logP2 = std::log(1.0 - weight1) + gaussianLogPdf(value, mean2, variance2);
+        logLikelihood += logSumExp(logP1, logP2);
+    }
+
+    bic = bicFromLogLikelihood(logGaps.size(), 5, logLikelihood);
+    return true;
+}
+
+bool detectTokenBucketShaper(
+    const std::vector<int64_t>& trainGapsNs,
+    double rawEffectiveCapacityMbps,
+    double shaperCapacityMbps,
+    double& singleModelBic,
+    double& tokenBucketModelBic,
+    double& bicImprovement
+) {
+    singleModelBic = 0.0;
+    tokenBucketModelBic = 0.0;
+    bicImprovement = 0.0;
+
+    if (rawEffectiveCapacityMbps <= 0.0 || shaperCapacityMbps <= 0.0) {
+        return false;
+    }
+
+    // Use WBest's own zero-threshold condition as the rate-separation gate.
+    if (shaperCapacityMbps >= (rawEffectiveCapacityMbps / 2.0)) {
+        return false;
+    }
+
+    if (!singleLogNormalGapBic(trainGapsNs, singleModelBic) ||
+        !twoComponentLogNormalGapBic(trainGapsNs, tokenBucketModelBic)) {
+        return false;
+    }
+
+    bicImprovement = singleModelBic - tokenBucketModelBic;
+    return tokenBucketModelBic < singleModelBic;
 }
 
 int64_t qpcToNs(uint64_t qpcValue, int64_t qpcFrequency) {
@@ -702,7 +891,7 @@ private:
         }
 
         std::vector<uint8_t> response;
-        response.reserve(75);
+        response.reserve(92);
         response.push_back(kWBestMessageType);
         response.push_back(kWBestStageFinalSummary);
         response.insert(response.end(), roundId.bytes.begin(), roundId.bytes.end());
@@ -715,6 +904,9 @@ private:
         appendDoubleBE(response, summary.availableBandwidthMbps);
         appendDoubleBE(response, summary.correctedAvailableBandwidthMbps);
         appendDoubleBE(response, summary.lossRate);
+        appendDoubleBE(response, summary.rawEffectiveCapacityMbps);
+        appendDoubleBE(response, summary.shaperCapacityMbps);
+        response.push_back(summary.shaperDetected ? 1 : 0);
         sendResponse(response, datagram);
         roundStates_.erase(roundId);
     }
@@ -826,15 +1018,30 @@ private:
             options_.trainGapTrimRatio
         );
         const double calculationGapSeconds = static_cast<double>(calculationGapNs / 1'000'000'000.0L);
+        if (calculationGapSeconds <= 0.0) {
+            return false;
+        }
 
         summary.meanTrainGapNs = static_cast<uint64_t>(calculationGapNs + 0.5L);
         summary.calculationTrainGapNs = summary.meanTrainGapNs;
         summary.rawMeanTrainGapNs = static_cast<double>(rawMeanGapNs);
-        summary.effectiveCapacityMbps = state.effectiveCapacityMbps;
-        summary.achievableThroughputMbps =
+        summary.rawEffectiveCapacityMbps = state.effectiveCapacityMbps;
+        summary.shaperCapacityMbps =
             (static_cast<double>(state.packetSizeBytes) * 8.0) /
             calculationGapSeconds /
             1'000'000.0;
+        summary.shaperDetected = detectTokenBucketShaper(
+            gapsNs,
+            summary.rawEffectiveCapacityMbps,
+            summary.shaperCapacityMbps,
+            summary.shaperSingleModelBic,
+            summary.shaperTokenBucketModelBic,
+            summary.shaperBicImprovement
+        );
+        summary.effectiveCapacityMbps = summary.shaperDetected
+            ? std::min(summary.rawEffectiveCapacityMbps, summary.shaperCapacityMbps)
+            : summary.rawEffectiveCapacityMbps;
+        summary.achievableThroughputMbps = summary.shaperCapacityMbps;
         summary.achievableThroughputMbps =
             std::min(summary.achievableThroughputMbps, summary.effectiveCapacityMbps);
 
@@ -885,7 +1092,11 @@ private:
             << "payload_bytes=" << state.packetSizeBytes << ' '
             << "received_train=" << summary.receivedTrainPackets << '/' << summary.sentTrainPackets << ' '
             << "Ce=" << std::fixed << std::setprecision(2) << summary.effectiveCapacityMbps << "Mbps "
+            << "Ce_raw=" << std::fixed << std::setprecision(2) << summary.rawEffectiveCapacityMbps << "Mbps "
+            << "C_shaper=" << std::fixed << std::setprecision(2) << summary.shaperCapacityMbps << "Mbps "
             << "R=" << std::fixed << std::setprecision(2) << summary.achievableThroughputMbps << "Mbps "
+            << "shaper_detected=" << (summary.shaperDetected ? 1 : 0) << ' '
+            << "shaper_bic_delta=" << std::fixed << std::setprecision(2) << summary.shaperBicImprovement << ' '
             << "aggregation=" << trainGapAggregationName(options_.trainGapAggregation) << ' '
             << "trim_ratio=" << options_.trainGapTrimRatio << ' '
             << "gap_count=" << gapsNs.size() << ' '
