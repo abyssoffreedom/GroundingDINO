@@ -1,14 +1,12 @@
 # Windows Native UDP Probe Server Usage
 
-This document explains how to build, enable, configure, and validate the Windows native UDP server used by the WBest network probe.
+This document explains how to build, enable, configure, and validate the Windows native UDP server used by the PTR network probe.
 
 ## 1. Purpose
 
-The original Python UDP probe server records packet arrival time inside `asyncio.DatagramProtocol.datagram_received()`. On Windows, Python can process several queued UDP datagrams in one event-loop batch, which can compress packet-pair gaps and overestimate `Ce`.
+The Python UDP probe server records packet arrival time inside `asyncio.DatagramProtocol.datagram_received()`. On Windows, Python can process queued UDP datagrams in event-loop batches, which can distort packet-train arrival gaps.
 
-The native helper in `server/winsock_timestamp_udp_server.cpp` keeps the same UDP probe protocol on port `9999`, but records arrival time immediately after `recvfrom()` returns using `QueryPerformanceCounter`.
-
-The helper records app-level receive timestamps using `QueryPerformanceCounter`.
+The native helper in `server/winsock_timestamp_udp_server.cpp` keeps the UDP probe port at `9999`, but records arrival time immediately after `recvfrom()` returns using `QueryPerformanceCounter`.
 
 Current timestamp source:
 
@@ -16,7 +14,7 @@ Current timestamp source:
 timestamp_source=app_qpc
 ```
 
-Important limitation: this is still an app-level timestamp. It is earlier and lighter than the Python callback timestamp, but it is not a NIC/kernel timestamp. Packet-pair `Ce` can still be inflated by Wi-Fi, driver batching, OS scheduling, or token-bucket traffic shaping.
+Important limitation: this is still an app-level timestamp. It is earlier and lighter than the Python callback timestamp, but it is not a NIC/kernel timestamp.
 
 ## 2. Files
 
@@ -32,7 +30,12 @@ Generated binary:
 server/winsock_timestamp_udp_server.exe
 ```
 
-FastAPI automatically uses the generated `.exe` on Windows if it exists and `NETWORK_PROBE_USE_WINSOCK_TIMESTAMP` is not disabled.
+FastAPI automatically uses the generated `.exe` on Windows if it exists and `NETWORK_PROBE_USE_WINSOCK_TIMESTAMP` is not disabled. The helper now supports only:
+
+```text
+latency
+ptr
+```
 
 ## 3. Requirements
 
@@ -65,14 +68,14 @@ If `cl` is not recognized, the Visual Studio build environment is not initialize
 From the Windows native tools terminal:
 
 ```powershell
-cd "C:\Users\EmVis\Shuyang's minor thesis\GroundingDINO"
+cd "C:\Users\Jan\Downloads\GroundingDINO"
 powershell -ExecutionPolicy Bypass -File .\tools\build_winsock_timestamp_udp_server.ps1
 ```
 
 Expected output:
 
 ```text
-Built C:\Users\EmVis\Shuyang's minor thesis\GroundingDINO\server\winsock_timestamp_udp_server.exe
+Built C:\Users\Jan\Downloads\GroundingDINO\server\winsock_timestamp_udp_server.exe
 ```
 
 Confirm the binary exists:
@@ -92,13 +95,9 @@ True
 Use the native helper with app-level QPC receive timestamps:
 
 ```powershell
-cd "C:\Users\EmVis\Shuyang's minor thesis\GroundingDINO"
+cd "C:\Users\Jan\Downloads\GroundingDINO"
 
 $env:NETWORK_PROBE_USE_WINSOCK_TIMESTAMP="1"
-$env:NETWORK_PROBE_MIN_PAIR_GAP_US="0"
-$env:NETWORK_PROBE_MIN_VALID_PAIRS="1"
-$env:NETWORK_PROBE_TRAIN_GAP_AGGREGATION="trimmed_mean"
-$env:NETWORK_PROBE_TRAIN_GAP_TRIM_RATIO="0.10"
 $env:NETWORK_PROBE_HIGH_PRIORITY="1"
 
 uvicorn server.inference_worker:app --host 0.0.0.0 --port 8000
@@ -108,10 +107,10 @@ Expected startup log:
 
 ```text
 [NetworkProbe] started Windows native UDP probe server: ...
-[WBest][Winsock] listening host=0.0.0.0 port=9999 timestamp_source=app_qpc ...
+[NetworkProbe][Winsock] listening host=0.0.0.0 port=9999 timestamp_source=app_qpc protocols=latency,ptr high_priority=1
 ```
 
-If you do not see `[WBest][Winsock]`, the helper is not running.
+If you do not see `[NetworkProbe][Winsock]`, the helper is not running.
 
 ## 6. Environment Variables
 
@@ -122,39 +121,6 @@ Set to 0 to disable the native helper and use the Python asyncio UDP server.
 ```
 
 ```text
-NETWORK_PROBE_MIN_PAIR_GAP_US
-Default: 0.
-Minimum positive packet-pair gap used for Ce samples. A value of 50 rejects gaps <= 50 us.
-```
-
-```text
-NETWORK_PROBE_MIN_VALID_PAIRS
-Default: 1.
-Minimum number of valid packet-pair samples required for a successful packet-pair summary.
-```
-
-```text
-NETWORK_PROBE_TRAIN_GAP_AGGREGATION
-Default: trimmed_mean.
-Controls how packet-train receive gaps are aggregated for R.
-
-mean
-Use the arithmetic mean of all positive train gaps.
-
-trimmed_mean
-Sort train gaps and remove both tails before averaging. This is useful when app-level receive timestamps contain a few large scheduler outliers and a few tiny socket-buffer drain gaps.
-
-median
-Use the median train gap. This is very robust but can overestimate R when many small burst gaps are present.
-```
-
-```text
-NETWORK_PROBE_TRAIN_GAP_TRIM_RATIO
-Default: 0.10.
-Used only by trimmed_mean. With 29 train gaps and 0.10, the helper trims the 2 smallest and 2 largest gaps before averaging.
-```
-
-```text
 NETWORK_PROBE_HIGH_PRIORITY
 Default: 0.
 Set to 1 to run the helper process as HIGH_PRIORITY_CLASS and its receive thread as THREAD_PRIORITY_HIGHEST. This reduces app-level scheduler stalls, but it cannot replace kernel/NIC timestamps.
@@ -162,99 +128,51 @@ Set to 1 to run the helper process as HIGH_PRIORITY_CLASS and its receive thread
 
 ## 7. Validation Logs
 
-Packet-pair summary:
+PTR phase summary:
 
 ```text
-[WBest][Winsock][Summary] round=... payload_bytes=1400 valid_pairs=.../30 Ce=...Mbps gap_lt_50us=... non_positive_gap=... ci_300_1000=... missing=... reordered=... seq_mismatch=... min_pair_gap_us=... timestamp_source=app_qpc
-```
-
-Packet-train summary:
-
-```text
-[WBest][Winsock][Train][Summary] round=... payload_bytes=1400 received_train=30/30 Ce=...Mbps Ce_raw=...Mbps C_shaper=...Mbps R=...Mbps shaper_detected=... queue_compression=... queue_compression_ratio=... client_send_rate=...Mbps shaper_bic_delta=... aggregation=trimmed_mean trim_ratio=0.10 gap_count=29 gap_min=...us gap_median=...us gap_mean=...us gap_calc=...us gap_p90=...us gap_max=...us timestamp_source=app_qpc
-[WBest][Winsock][Train][Detail] round=... gaps=1->2:...us,2->3:...us,...
+[PTR][Winsock][Summary] round=... phase=... payload_bytes=700 received_train=60/60 PTR=...Mbps first_half_rate=...Mbps second_half_rate=...Mbps gap_count=59 gap_mean=...us loss=0.000 missing=0 non_positive_gap=0 reordered=0 timestamp_source=app_qpc
+[PTR][Winsock][Detail] round=... phase=... gaps=1->2:...us,2->3:...us,...
 ```
 
 The Swift client also prints the target train send gap and measured send completion gap:
 
 ```text
-[NetworkProbe] ... send_gap=...ms actual_send_gap_mean=...ms actual_send_gap_min=...ms actual_send_gap_median=...ms actual_send_gap_p90=...ms actual_send_gap_max=...ms ...
+[NetworkProbe] PTR=...Mbps PTR_corrected=...Mbps phase=... completed_phases=... loss=... dst_gap=...ms src_gap=...ms turning_gap=...ms gap_diff_ratio=... receiver_rate=...Mbps receiver_rate_first_half=...Mbps receiver_rate_second_half=...Mbps actual_send_gap_mean=...ms ...
 ```
 
 Key fields:
 
 ```text
+PTR
+Receiver-side packet-train rate for the completed phase.
+```
+
+```text
+first_half_rate / second_half_rate
+Used to diagnose burst effects inside a train.
+```
+
+```text
+missing
+Number of expected train packets not observed by the server.
+```
+
+```text
 non_positive_gap
-Number of packet pairs where packet 2 timestamp <= packet 1 timestamp.
-Good: 0 or very low.
-Bad: large values, because Ce cannot be trusted.
+Number of adjacent train sequence pairs whose receive timestamp gap is <= 0.
+Good: 0.
 ```
 
 ```text
-gap_lt_50us
-Number of positive but suspiciously tiny packet-pair gaps.
-High values can inflate Ce.
+reordered
+Number of adjacent sequence pairs whose receive timestamp moved backwards.
+Good: 0.
 ```
 
-```text
-ci_300_1000
-Number of packet-pair capacity samples in the 300-1000 Mbps range.
-High values usually indicate timestamp compression or an unrealistic Ce estimate.
-```
+## 8. Disable And Fallback
 
-```text
-missing, reordered, seq_mismatch
-Should be 0. If not, packet matching or delivery is broken.
-```
-
-```text
-gap_mean vs gap_calc
-gap_mean is the raw arithmetic mean.
-gap_calc is the aggregation actually used to calculate R.
-```
-
-```text
-Ce_raw / C_shaper / Ce
-Ce_raw is the packet-pair burst capacity.
-C_shaper is the robust train-derived shaping capacity.
-Ce is the capacity used by the WBest A formula after shaper correction.
-```
-
-```text
-shaper_detected
-Set to 1 when the train gap distribution fits a two-component log-normal model better than a single-component model by BIC, and the train-derived C_shaper would otherwise trigger WBest's R < Ce_raw / 2 zero threshold.
-```
-
-```text
-queue_compression
-Set to 1 when the server's median train receive gap is far below the client's measured send gap. This means the server is probably timing socket queue drain rather than path service, so shaper correction is disabled for that round.
-```
-
-## 8. Interpreting Results
-
-Normal high-bandwidth path:
-
-```text
-Ce and R are close.
-threshold_zero=false.
-Most train gaps are concentrated, with only a few outliers.
-```
-
-Token-bucket or Network Link Conditioner shaping:
-
-```text
-Many tiny gaps and many long pause gaps appear in the same train.
-R is close to the configured long-term limit.
-Ce can be much larger than R because packet pairs land inside bursts.
-The helper keeps Ce_raw for diagnostics, estimates C_shaper from the train, and uses Ce=min(Ce_raw, C_shaper) for the WBest A formula.
-If queue_compression=1, the helper does not treat the round as token-bucket shaping.
-```
-
-In that shaper case, `Ce_raw` remains a burst-capacity diagnostic while corrected `Ce` is the effective capacity used for `A` and `A_corrected`.
-
-## 9. Disable And Fallback
-
-To force the original Python UDP server:
+To force the Python UDP server:
 
 ```powershell
 $env:NETWORK_PROBE_USE_WINSOCK_TIMESTAMP="0"
@@ -269,9 +187,9 @@ server/winsock_timestamp_udp_server.exe
 
 If the `.exe` is missing, `server/inference_worker.py` automatically falls back to `server/udp_echo_server.py`.
 
-## 10. Troubleshooting
+## 9. Troubleshooting
 
-### No `[WBest][Winsock]` logs
+### No `[NetworkProbe][Winsock]` logs
 
 Likely causes:
 
@@ -294,30 +212,20 @@ netstat -ano -p udp | findstr :9999
 
 Stop the existing process or restart the terminal/session.
 
-### `non_positive_gap` remains high
+### PTR is unstable
 
-The app-level timestamp path is still not clean enough for packet-pair `Ce`.
-
-Recommended actions:
+Recommended checks:
 
 ```text
-Use server wired Ethernet instead of server Wi-Fi.
-Try another NIC/driver.
-Enable NETWORK_PROBE_MIN_PAIR_GAP_US=50 and NETWORK_PROBE_MIN_VALID_PAIRS=15.
-Avoid using Ce when valid pair count is low.
-Prefer R for UI/adaptation if the train distribution clearly shows token-bucket shaping.
+Use server wired Ethernet instead of server Wi-Fi when possible.
+Reduce competing traffic during controlled experiments.
+Check missing, non_positive_gap, reordered, first_half_rate, and second_half_rate.
+Use the Python fallback to compare behavior if the native helper appears stale or was not rebuilt.
 ```
 
-### Bandwidth UI becomes zero under limited uplink
-
-If `R < Ce_raw / 2` and `shaper_detected=0`, the WBest available-bandwidth formula still sets `A=0`.
-
-This does not necessarily mean upload throughput is zero. Check `Ce_raw`, `C_shaper`, `R`, and the train gap distribution in the client/server logs.
-
-## 11. Recommended Test Procedure
+## 10. Recommended Test Procedure
 
 1. Build the helper.
-2. Start the server with `NETWORK_PROBE_TRAIN_GAP_AGGREGATION=trimmed_mean` and `NETWORK_PROBE_HIGH_PRIORITY=1`.
+2. Start the server with `NETWORK_PROBE_HIGH_PRIORITY=1`.
 3. Run the app for at least 5-10 probe rounds.
-4. Check `non_positive_gap`, `gap_lt_50us`, `ci_300_1000`, `Ce`, `R`, and the train gap distribution.
-5. If `Ce` is inflated but `R` tracks the known NLC limit, treat the path as token-bucket shaped and use `R` as the throughput signal.
+4. Check `missing`, `non_positive_gap`, `reordered`, `PTR`, `first_half_rate`, and `second_half_rate`.

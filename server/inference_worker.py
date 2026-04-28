@@ -131,6 +131,10 @@ def _winsock_udp_server_executable() -> Path:
     return Path(__file__).with_name("winsock_timestamp_udp_server.exe")
 
 
+def _winsock_udp_server_source() -> Path:
+    return Path(__file__).with_name("winsock_timestamp_udp_server.cpp")
+
+
 def _make_winsock_udp_server_command() -> Optional[List[str]]:
     if os.name != "nt":
         return None
@@ -142,6 +146,15 @@ def _make_winsock_udp_server_command() -> Optional[List[str]]:
     if not executable.exists():
         return None
 
+    source = _winsock_udp_server_source()
+    if source.exists() and executable.stat().st_mtime < source.stat().st_mtime:
+        print(
+            "[NetworkProbe] Windows native UDP probe server is older than "
+            "winsock_timestamp_udp_server.cpp; rebuild it before using native PTR timestamps. "
+            "Falling back to Python UDP server."
+        )
+        return None
+
     command = [
         str(executable),
         "--host",
@@ -149,22 +162,6 @@ def _make_winsock_udp_server_command() -> Optional[List[str]]:
         "--port",
         str(UDP_ECHO_PORT),
     ]
-
-    min_pair_gap_us = os.environ.get("NETWORK_PROBE_MIN_PAIR_GAP_US")
-    if min_pair_gap_us:
-        command.extend(["--min-pair-gap-us", min_pair_gap_us])
-
-    min_valid_pairs = os.environ.get("NETWORK_PROBE_MIN_VALID_PAIRS")
-    if min_valid_pairs:
-        command.extend(["--min-valid-pairs", min_valid_pairs])
-
-    train_gap_aggregation = os.environ.get("NETWORK_PROBE_TRAIN_GAP_AGGREGATION")
-    if train_gap_aggregation:
-        command.extend(["--train-gap-aggregation", train_gap_aggregation])
-
-    train_gap_trim_ratio = os.environ.get("NETWORK_PROBE_TRAIN_GAP_TRIM_RATIO")
-    if train_gap_trim_ratio:
-        command.extend(["--train-gap-trim-ratio", train_gap_trim_ratio])
 
     high_priority = os.environ.get("NETWORK_PROBE_HIGH_PRIORITY")
     if high_priority:
@@ -325,7 +322,7 @@ async def detect(
         boxes_xyxy = tensor_boxes_to_normalized_xyxy(boxes)
         # Return COCO format [xmin, ymin, w, h] in pixels
         boxes_coco = tensor_boxes_to_coco_xywh(boxes, size=image_pil.size)
-        
+
         if len(boxes_xyxy) > 0 and 0 <= params.nms_threshold < 1.0:
             score_tensor = torch.tensor(scores)
             keep = nms(boxes_xyxy, score_tensor, params.nms_threshold)
