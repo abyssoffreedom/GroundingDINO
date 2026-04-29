@@ -47,8 +47,8 @@ class DetectionResult(BaseModel):
 
 class Metrics(BaseModel):
     server_processing_ms: float
-    t_server_request_received: float
-    t_server_response_done: float
+    server_receive_ns: int
+    server_send_ns: int
 
 
 class DetectResponse(BaseModel):
@@ -171,9 +171,8 @@ def _make_winsock_udp_server_command() -> Optional[List[str]]:
 
 class E2ETimerMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
-        # Server request received (approx) in epoch ms
-        t0_ms = time.time() * 1000.0
-        request.state.t_server_request_received = t0_ms
+        # Monotonic timestamp aligned with UDP time-sync probes.
+        request.state.server_receive_ns = time.perf_counter_ns()
         response = await call_next(request)
         # Do not modify headers/body here; endpoint will compute metrics and include in body.
         return response
@@ -266,7 +265,7 @@ async def detect(
     ),
     images: List[UploadFile] = File(...),
 ):
-    t_process_start = time.time() * 1000.0
+    t_process_start_ns = time.perf_counter_ns()
     if not images:
         raise HTTPException(status_code=400, detail="images array cannot be empty")
 
@@ -345,15 +344,17 @@ async def detect(
             result.visualization_b64 = base64.b64encode(buffered.getvalue()).decode()
         results.append(result)
 
-    # Compose metrics in body using request.state timestamps from middleware
-    t_server_request_received = getattr(request.state, "t_server_request_received", None)
-    t1_ms = time.time() * 1000.0
-    server_processing_ms = t1_ms - t_process_start
+    # Compose metrics using the same monotonic clock as UDP time-sync probes.
+    server_receive_ns = getattr(request.state, "server_receive_ns", None)
+    if server_receive_ns is None:
+        server_receive_ns = t_process_start_ns
+    server_send_ns = time.perf_counter_ns()
+    server_processing_ms = (server_send_ns - int(server_receive_ns)) / 1_000_000.0
 
     metrics = Metrics(
         server_processing_ms=server_processing_ms,
-        t_server_request_received=float(t_server_request_received) if t_server_request_received else float(t_process_start),
-        t_server_response_done=float(t1_ms),
+        server_receive_ns=int(server_receive_ns),
+        server_send_ns=int(server_send_ns),
     )
 
     return DetectResponse(request_id=request_id, device=device, results=results, metrics=metrics)
