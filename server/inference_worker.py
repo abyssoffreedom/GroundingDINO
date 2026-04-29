@@ -163,9 +163,8 @@ def _make_winsock_udp_server_command() -> Optional[List[str]]:
         str(UDP_ECHO_PORT),
     ]
 
-    high_priority = os.environ.get("NETWORK_PROBE_HIGH_PRIORITY")
-    if high_priority:
-        command.extend(["--high-priority", high_priority])
+    high_priority = os.environ.get("NETWORK_PROBE_HIGH_PRIORITY", "1")
+    command.extend(["--high-priority", high_priority])
 
     return command
 

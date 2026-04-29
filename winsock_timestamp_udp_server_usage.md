@@ -98,8 +98,6 @@ Use the native helper with app-level QPC receive timestamps:
 cd "C:\Users\EmVis\Shuyang's minor thesis\GroundingDINO"
 
 $env:NETWORK_PROBE_USE_WINSOCK_TIMESTAMP="1"
-$env:NETWORK_PROBE_HIGH_PRIORITY="1"
-
 uvicorn server.inference_worker:app --host 0.0.0.0 --port 8000
 ```
 
@@ -122,8 +120,8 @@ Set to 0 to disable the native helper and use the Python asyncio UDP server.
 
 ```text
 NETWORK_PROBE_HIGH_PRIORITY
-Default: 0.
-Set to 1 to run the helper process as HIGH_PRIORITY_CLASS and its receive thread as THREAD_PRIORITY_HIGHEST. This reduces app-level scheduler stalls, but it cannot replace kernel/NIC timestamps.
+Default: 1.
+Set to 1 to run the helper process as HIGH_PRIORITY_CLASS and its receive thread as THREAD_PRIORITY_HIGHEST. Set to 0 to disable this priority boost. This reduces app-level scheduler stalls, but it cannot replace kernel/NIC timestamps.
 ```
 
 ## 7. Validation Logs
@@ -226,7 +224,7 @@ Use the Python fallback to compare behavior if the native helper appears stale o
 ## 10. Recommended Test Procedure
 
 1. Build the helper.
-2. Start the server with `NETWORK_PROBE_HIGH_PRIORITY=1`.
+2. Start the server. `NETWORK_PROBE_HIGH_PRIORITY` defaults to 1; set it to 0 only if you want to disable the priority boost.
 3. Run the app for at least 5-10 probe rounds.
 4. Check `missing`, `non_positive_gap`, `reordered`, `PTR`, `first_half_rate`, and `second_half_rate`.
 
@@ -332,8 +330,6 @@ True
 cd "C:\Users\EmVis\Shuyang's minor thesis\GroundingDINO"
 
 $env:NETWORK_PROBE_USE_WINSOCK_TIMESTAMP="1"
-$env:NETWORK_PROBE_HIGH_PRIORITY="1"
-
 uvicorn server.inference_worker:app --host 0.0.0.0 --port 8000
 ```
 
@@ -356,8 +352,8 @@ NETWORK_PROBE_USE_WINSOCK_TIMESTAMP
 
 ```text
 NETWORK_PROBE_HIGH_PRIORITY
-默认值：0。
-设置为 1 会让辅助进程以 HIGH_PRIORITY_CLASS 运行，并让接收线程使用 THREAD_PRIORITY_HIGHEST。这样可以减少应用层调度停顿，但不能替代内核或网卡时间戳。
+默认值：1。
+设置为 1 会让辅助进程以 HIGH_PRIORITY_CLASS 运行，并让接收线程使用 THREAD_PRIORITY_HIGHEST。设置为 0 可禁用这个优先级提升。这样可以减少应用层调度停顿，但不能替代内核或网卡时间戳。
 ```
 
 ## 7. 验证日志
@@ -460,6 +456,6 @@ netstat -ano -p udp | findstr :9999
 ## 10. 推荐测试流程
 
 1. 构建辅助程序。
-2. 使用 `NETWORK_PROBE_HIGH_PRIORITY=1` 启动服务器。
+2. 启动服务器。`NETWORK_PROBE_HIGH_PRIORITY` 默认值为 1；只有需要禁用优先级提升时才设置为 0。
 3. 运行 app 至少 5-10 轮探测。
 4. 检查 `missing`、`non_positive_gap`、`reordered`、`PTR`、`first_half_rate` 和 `second_half_rate`。
