@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -19,6 +20,7 @@
 #include <iostream>
 #include <limits>
 #include <numeric>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -30,6 +32,7 @@
 namespace {
 
 constexpr uint8_t kLatencyMessageType = 1;
+constexpr uint8_t kTimeSyncMessageType = 4;
 constexpr uint8_t kPTRMessageType = 3;
 constexpr uint8_t kPTRStagePacketTrain = 1;
 constexpr uint8_t kPTRStagePhaseSummary = 2;
@@ -159,6 +162,97 @@ bool parseBool(const std::string& value) {
         return false;
     }
     throw std::runtime_error("Invalid boolean value. Use 0 or 1.");
+}
+
+std::string datagramText(const std::vector<uint8_t>& data) {
+    return std::string(data.begin(), data.end());
+}
+
+std::optional<std::string> extractJsonStringField(
+    const std::vector<uint8_t>& data,
+    const std::string& fieldName
+) {
+    const std::string text = datagramText(data);
+    const std::string key = "\"" + fieldName + "\"";
+    size_t index = text.find(key);
+    if (index == std::string::npos) {
+        return std::nullopt;
+    }
+
+    index = text.find(':', index + key.size());
+    if (index == std::string::npos) {
+        return std::nullopt;
+    }
+
+    ++index;
+    while (index < text.size() && std::isspace(static_cast<unsigned char>(text[index]))) {
+        ++index;
+    }
+    if (index >= text.size() || text[index] != '"') {
+        return std::nullopt;
+    }
+
+    ++index;
+    std::string value;
+    bool escaping = false;
+    while (index < text.size()) {
+        const char current = text[index++];
+        if (escaping) {
+            value.push_back(current);
+            escaping = false;
+            continue;
+        }
+        if (current == '\\') {
+            escaping = true;
+            continue;
+        }
+        if (current == '"') {
+            return value;
+        }
+        value.push_back(current);
+    }
+
+    return std::nullopt;
+}
+
+std::optional<uint64_t> extractJsonUnsignedField(
+    const std::vector<uint8_t>& data,
+    const std::string& fieldName
+) {
+    const std::string text = datagramText(data);
+    const std::string key = "\"" + fieldName + "\"";
+    size_t index = text.find(key);
+    if (index == std::string::npos) {
+        return std::nullopt;
+    }
+
+    index = text.find(':', index + key.size());
+    if (index == std::string::npos) {
+        return std::nullopt;
+    }
+
+    ++index;
+    while (index < text.size() && std::isspace(static_cast<unsigned char>(text[index]))) {
+        ++index;
+    }
+
+    uint64_t value = 0;
+    bool hasDigit = false;
+    while (index < text.size() && std::isdigit(static_cast<unsigned char>(text[index]))) {
+        hasDigit = true;
+        const uint64_t digit = static_cast<uint64_t>(text[index] - '0');
+        if (value > ((std::numeric_limits<uint64_t>::max() - digit) / 10ULL)) {
+            return std::nullopt;
+        }
+        value = (value * 10ULL) + digit;
+        ++index;
+    }
+
+    if (!hasDigit) {
+        return std::nullopt;
+    }
+
+    return value;
 }
 
 std::string formatGapListUs(
@@ -320,17 +414,27 @@ ReceivedDatagram receiveDatagram(SOCKET sock, int64_t qpcFrequency) {
 
 class NetworkProbeServer {
 public:
-    explicit NetworkProbeServer(SOCKET sock)
-        : sock_(sock) {}
+    explicit NetworkProbeServer(SOCKET sock, int64_t qpcFrequency)
+        : sock_(sock), qpcFrequency_(qpcFrequency) {}
 
     void handleDatagram(const ReceivedDatagram& datagram) {
         if (datagram.data.empty()) {
             return;
         }
 
+        if (datagram.data[0] == static_cast<uint8_t>('{')) {
+            handleJSONTimeSync(datagram);
+            return;
+        }
+
         const uint8_t messageType = datagram.data[0];
         if (messageType == kLatencyMessageType) {
             handleLatency(datagram);
+            return;
+        }
+
+        if (messageType == kTimeSyncMessageType) {
+            handleBinaryTimeSync(datagram);
             return;
         }
 
@@ -368,6 +472,54 @@ private:
         appendU32BE(response, sequence);
         appendU64BE(response, clientSendTimeNs);
         appendU64BE(response, static_cast<uint64_t>(std::max<int64_t>(datagram.arrivalNs, 0)));
+        sendResponse(response, datagram);
+    }
+
+    void handleBinaryTimeSync(const ReceivedDatagram& datagram) {
+        if (datagram.data.size() != 13) {
+            return;
+        }
+
+        const uint32_t sequence = readU32BE(datagram.data.data() + 1);
+        uint64_t clientSendTimeNs = 0;
+        for (int i = 0; i < 8; ++i) {
+            clientSendTimeNs = (clientSendTimeNs << 8) | static_cast<uint64_t>(datagram.data[5 + i]);
+        }
+
+        std::vector<uint8_t> response;
+        response.reserve(29);
+        response.push_back(kTimeSyncMessageType);
+        appendU32BE(response, sequence);
+        appendU64BE(response, clientSendTimeNs);
+        appendU64BE(response, static_cast<uint64_t>(std::max<int64_t>(datagram.arrivalNs, 0)));
+        appendU64BE(response, static_cast<uint64_t>(std::max<int64_t>(currentQpcNs(qpcFrequency_), 0)));
+        sendResponse(response, datagram);
+    }
+
+    void handleJSONTimeSync(const ReceivedDatagram& datagram) {
+        const std::optional<std::string> type = extractJsonStringField(datagram.data, "type");
+        if (!type.has_value() || type.value() != "time_sync") {
+            return;
+        }
+
+        const std::optional<uint64_t> sequence = extractJsonUnsignedField(datagram.data, "seq");
+        const std::optional<uint64_t> clientSendTimeNs = extractJsonUnsignedField(datagram.data, "client_send_ns");
+        if (!sequence.has_value() || !clientSendTimeNs.has_value()) {
+            return;
+        }
+
+        std::ostringstream stream;
+        stream << "{\"type\":\"time_sync_response\","
+               << "\"seq\":" << sequence.value() << ','
+               << "\"client_send_ns\":" << clientSendTimeNs.value() << ','
+               << "\"server_receive_ns\":" << std::max<int64_t>(datagram.arrivalNs, 0) << ','
+               << "\"server_send_ns\":";
+
+        const int64_t serverSendNs = std::max<int64_t>(currentQpcNs(qpcFrequency_), 0);
+        stream << serverSendNs << '}';
+
+        const std::string responseText = stream.str();
+        const std::vector<uint8_t> response(responseText.begin(), responseText.end());
         sendResponse(response, datagram);
     }
 
@@ -639,6 +791,7 @@ private:
     }
 
     SOCKET sock_;
+    int64_t qpcFrequency_;
     std::unordered_map<PTRPhaseKey, PTRPhaseState, PTRPhaseKeyHash> ptrPhaseStates_;
 };
 
@@ -677,11 +830,11 @@ int main(int argc, char** argv) {
             << "[NetworkProbe][Winsock] listening host=" << options.host
             << " port=" << options.port
             << " timestamp_source=app_qpc"
-            << " protocols=latency,ptr"
+            << " protocols=latency,time_sync,ptr"
             << " high_priority=" << (options.highPriority ? 1 : 0)
             << '\n';
 
-        NetworkProbeServer server(sock);
+        NetworkProbeServer server(sock, frequency.QuadPart);
         while (true) {
             ReceivedDatagram datagram = receiveDatagram(sock, frequency.QuadPart);
             server.handleDatagram(datagram);

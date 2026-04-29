@@ -1,15 +1,19 @@
 import asyncio
+import json
 import statistics
 import struct
 import time
 import uuid
 
 LATENCY_MESSAGE_TYPE = 1
+TIME_SYNC_MESSAGE_TYPE = 4
 PTR_MESSAGE_TYPE = 3
 PTR_PHASE_STATE_TTL_NS = 10_000_000_000
 
 LATENCY_REQUEST_STRUCT = struct.Struct("!BIQ")
 LATENCY_RESPONSE_STRUCT = struct.Struct("!BIQQ")
+TIME_SYNC_REQUEST_STRUCT = struct.Struct("!BIQ")
+TIME_SYNC_RESPONSE_STRUCT = struct.Struct("!BIQQQ")
 PTR_REQUEST_STRUCT = struct.Struct("!BB16sIII")
 PTR_PHASE_SUMMARY_RESPONSE_STRUCT = struct.Struct("!BB16sBIIIQQddddIIII")
 
@@ -40,21 +44,29 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
         if not data:
             return
 
+        arrival_perf_ns = time.perf_counter_ns()
+        if data[:1] == b"{":
+            self._handle_json_time_sync_probe(data, addr, arrival_perf_ns)
+            return
+
         message_type = data[0]
         if message_type == LATENCY_MESSAGE_TYPE:
-            self._handle_latency_probe(data, addr)
+            self._handle_latency_probe(data, addr, arrival_perf_ns)
+            return
+
+        if message_type == TIME_SYNC_MESSAGE_TYPE:
+            self._handle_binary_time_sync_probe(data, addr, arrival_perf_ns)
             return
 
         if message_type == PTR_MESSAGE_TYPE:
-            self._handle_ptr_probe(data, addr)
+            self._handle_ptr_probe(data, addr, arrival_perf_ns)
 
-    def _handle_latency_probe(self, data, addr):
+    def _handle_latency_probe(self, data, addr, server_receive_time_ns: int):
         try:
             version, sequence, client_send_time_ns = LATENCY_REQUEST_STRUCT.unpack(data)
         except struct.error:
             return
 
-        server_receive_time_ns = time.perf_counter_ns()
         response = LATENCY_RESPONSE_STRUCT.pack(
             version,
             sequence,
@@ -63,7 +75,45 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
         )
         self.transport.sendto(response, addr)
 
-    def _handle_ptr_probe(self, data, addr):
+    def _handle_binary_time_sync_probe(self, data, addr, server_receive_time_ns: int):
+        try:
+            message_type, sequence, client_send_time_ns = TIME_SYNC_REQUEST_STRUCT.unpack(data)
+        except struct.error:
+            return
+
+        response = TIME_SYNC_RESPONSE_STRUCT.pack(
+            message_type,
+            sequence,
+            client_send_time_ns,
+            server_receive_time_ns,
+            time.perf_counter_ns(),
+        )
+        self.transport.sendto(response, addr)
+
+    def _handle_json_time_sync_probe(self, data, addr, server_receive_time_ns: int):
+        try:
+            message = json.loads(data.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return
+
+        if message.get("type") != "time_sync":
+            return
+
+        sequence = message.get("seq")
+        client_send_time_ns = message.get("client_send_ns")
+        if not isinstance(sequence, int) or not isinstance(client_send_time_ns, int):
+            return
+
+        response = {
+            "type": "time_sync_response",
+            "seq": sequence,
+            "client_send_ns": client_send_time_ns,
+            "server_receive_ns": server_receive_time_ns,
+            "server_send_ns": time.perf_counter_ns(),
+        }
+        self.transport.sendto(json.dumps(response, separators=(",", ":")).encode("utf-8"), addr)
+
+    def _handle_ptr_probe(self, data, addr, arrival_perf_ns: int):
         try:
             message_type, stage, round_id_bytes, phase_id, sequence, total_count = (
                 PTR_REQUEST_STRUCT.unpack_from(data)
@@ -71,7 +121,6 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
         except struct.error:
             return
 
-        arrival_perf_ns = time.perf_counter_ns()
         self._cleanup_stale_ptr_phase_states(arrival_perf_ns)
 
         if stage == PTR_STAGE_PACKET_TRAIN:
