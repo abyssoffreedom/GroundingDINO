@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import List, Optional
 
 import torch
-import time
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, Request
 from pydantic import BaseModel
 from PIL import Image, ImageOps
@@ -24,6 +23,7 @@ from torchvision.ops import nms
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from demo.inference_on_a_image import load_model, get_grounding_output, plot_boxes_to_image
+from server.monotonic_clock import server_now_ns
 from server.udp_echo_server import start_udp_echo_server
 
 CONFIG_PATH = Path("groundingdino/config/GroundingDINO_SwinT_OGC.py")
@@ -172,7 +172,7 @@ def _make_winsock_udp_server_command() -> Optional[List[str]]:
 class E2ETimerMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         # Monotonic timestamp aligned with UDP time-sync probes.
-        request.state.server_receive_ns = time.perf_counter_ns()
+        request.state.server_receive_ns = server_now_ns()
         response = await call_next(request)
         # Do not modify headers/body here; endpoint will compute metrics and include in body.
         return response
@@ -265,7 +265,7 @@ async def detect(
     ),
     images: List[UploadFile] = File(...),
 ):
-    t_process_start_ns = time.perf_counter_ns()
+    t_process_start_ns = server_now_ns()
     if not images:
         raise HTTPException(status_code=400, detail="images array cannot be empty")
 
@@ -348,7 +348,7 @@ async def detect(
     server_receive_ns = getattr(request.state, "server_receive_ns", None)
     if server_receive_ns is None:
         server_receive_ns = t_process_start_ns
-    server_send_ns = time.perf_counter_ns()
+    server_send_ns = server_now_ns()
     server_processing_ms = (server_send_ns - int(server_receive_ns)) / 1_000_000.0
 
     metrics = Metrics(

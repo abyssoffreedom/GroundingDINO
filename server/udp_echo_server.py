@@ -2,8 +2,9 @@ import asyncio
 import json
 import statistics
 import struct
-import time
 import uuid
+
+from server.monotonic_clock import server_now_ns
 
 LATENCY_MESSAGE_TYPE = 1
 TIME_SYNC_MESSAGE_TYPE = 4
@@ -44,7 +45,7 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
         if not data:
             return
 
-        arrival_perf_ns = time.perf_counter_ns()
+        arrival_perf_ns = server_now_ns()
         if data[:1] == b"{":
             self._handle_json_time_sync_probe(data, addr, arrival_perf_ns)
             return
@@ -86,7 +87,7 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
             sequence,
             client_send_time_ns,
             server_receive_time_ns,
-            time.perf_counter_ns(),
+            server_now_ns(),
         )
         self.transport.sendto(response, addr)
 
@@ -109,7 +110,7 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
             "seq": sequence,
             "client_send_ns": client_send_time_ns,
             "server_receive_ns": server_receive_time_ns,
-            "server_send_ns": time.perf_counter_ns(),
+            "server_send_ns": server_now_ns(),
         }
         self.transport.sendto(json.dumps(response, separators=(",", ":")).encode("utf-8"), addr)
 
@@ -188,7 +189,7 @@ class UDPEchoProtocol(asyncio.DatagramProtocol):
         }
 
         if state is not None:
-            state.touch(time.perf_counter_ns())
+            state.touch(server_now_ns())
             state.expected_packets = max(state.expected_packets, packet_count)
             computed_summary = self._compute_ptr_phase_summary(state)
             if computed_summary is not None:
