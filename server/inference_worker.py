@@ -20,8 +20,6 @@ except ImportError:
 
 import groundingdino.datasets.transforms as T
 from torchvision.ops import nms
-from starlette.middleware.base import BaseHTTPMiddleware
-
 from demo.inference_on_a_image import load_model, get_grounding_output, plot_boxes_to_image
 from server.monotonic_clock import server_now_ns
 from server.udp_echo_server import start_udp_echo_server
@@ -49,6 +47,11 @@ class Metrics(BaseModel):
     server_processing_ms: float
     server_receive_ns: int
     server_send_ns: int
+    server_request_start_ns: int
+    server_request_body_complete_ns: int
+    server_response_ready_ns: int
+    request_body_bytes: int
+    uploaded_image_bytes: int
 
 
 class DetectResponse(BaseModel):
@@ -169,16 +172,52 @@ def _make_winsock_udp_server_command() -> Optional[List[str]]:
     return command
 
 
-class E2ETimerMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        # Monotonic timestamp aligned with UDP time-sync probes.
-        request.state.server_receive_ns = server_now_ns()
-        response = await call_next(request)
-        # Do not modify headers/body here; endpoint will compute metrics and include in body.
-        return response
+class HTTPTransferTimingMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        state = scope.setdefault("state", {})
+        server_request_start_ns = server_now_ns()
+        state["server_request_start_ns"] = server_request_start_ns
+        # Backward-compatible alias used by older clients.
+        state["server_receive_ns"] = server_request_start_ns
+        state["request_body_bytes"] = 0
+
+        async def timing_receive():
+            message = await receive()
+            if message["type"] == "http.request":
+                body = message.get("body", b"")
+                state["request_body_bytes"] = int(state.get("request_body_bytes", 0)) + len(body)
+                if not message.get("more_body", False):
+                    state.setdefault("server_request_body_complete_ns", server_now_ns())
+            return message
+
+        async def timing_send(message):
+            if message["type"] == "http.response.start":
+                server_response_send_start_ns = server_now_ns()
+                state["server_response_send_start_ns"] = server_response_send_start_ns
+                headers = list(message.get("headers", []))
+                headers.append((
+                    b"x-server-response-send-start-ns",
+                    str(server_response_send_start_ns).encode("ascii"),
+                ))
+                if "server_request_body_complete_ns" in state:
+                    headers.append((
+                        b"x-server-request-body-complete-ns",
+                        str(state["server_request_body_complete_ns"]).encode("ascii"),
+                    ))
+                message["headers"] = headers
+            await send(message)
+
+        await self.app(scope, timing_receive, timing_send)
 
 
-app.add_middleware(E2ETimerMiddleware)
+app.add_middleware(HTTPTransferTimingMiddleware)
 
 
 @app.on_event("startup")
@@ -288,9 +327,11 @@ async def detect(
     )
 
     results = []
+    uploaded_image_bytes = 0
 
     for idx, upload in enumerate(images[: params.max_detections]):
         data = await upload.read()
+        uploaded_image_bytes += len(data)
         image_pil, image_tensor = prepare_image(data)
         image_id = ids_list[idx] if ids_list else (upload.filename or f"image_{idx}")
 
@@ -345,16 +386,29 @@ async def detect(
         results.append(result)
 
     # Compose metrics using the same monotonic clock as UDP time-sync probes.
-    server_receive_ns = getattr(request.state, "server_receive_ns", None)
-    if server_receive_ns is None:
-        server_receive_ns = t_process_start_ns
-    server_send_ns = server_now_ns()
-    server_processing_ms = (server_send_ns - int(server_receive_ns)) / 1_000_000.0
+    server_request_start_ns = getattr(request.state, "server_request_start_ns", None)
+    if server_request_start_ns is None:
+        server_request_start_ns = getattr(request.state, "server_receive_ns", t_process_start_ns)
+
+    server_request_body_complete_ns = getattr(request.state, "server_request_body_complete_ns", None)
+    if server_request_body_complete_ns is None:
+        server_request_body_complete_ns = t_process_start_ns
+
+    request_body_bytes = int(getattr(request.state, "request_body_bytes", 0) or 0)
+    server_response_ready_ns = server_now_ns()
+    server_processing_ms = (
+        server_response_ready_ns - int(server_request_body_complete_ns)
+    ) / 1_000_000.0
 
     metrics = Metrics(
         server_processing_ms=server_processing_ms,
-        server_receive_ns=int(server_receive_ns),
-        server_send_ns=int(server_send_ns),
+        server_receive_ns=int(server_request_start_ns),
+        server_send_ns=int(server_response_ready_ns),
+        server_request_start_ns=int(server_request_start_ns),
+        server_request_body_complete_ns=int(server_request_body_complete_ns),
+        server_response_ready_ns=int(server_response_ready_ns),
+        request_body_bytes=request_body_bytes,
+        uploaded_image_bytes=uploaded_image_bytes,
     )
 
     return DetectResponse(request_id=request_id, device=device, results=results, metrics=metrics)
