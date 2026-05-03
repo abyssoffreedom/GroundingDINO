@@ -45,6 +45,15 @@ class DetectionResult(BaseModel):
 
 class Metrics(BaseModel):
     server_processing_ms: float
+    server_post_body_parse_ms: float
+    server_request_parse_ms: float
+    server_model_lookup_ms: float
+    server_upload_read_ms: float
+    server_image_decode_ms: float
+    server_image_transform_ms: float
+    server_inference_ms: float
+    server_postprocess_ms: float
+    server_visualization_ms: float
     server_receive_ns: int
     server_send_ns: int
     server_request_start_ns: int
@@ -52,6 +61,12 @@ class Metrics(BaseModel):
     server_response_ready_ns: int
     request_body_bytes: int
     uploaded_image_bytes: int
+    uploaded_image_width: Optional[int] = None
+    uploaded_image_height: Optional[int] = None
+    model_tensor_width: Optional[int] = None
+    model_tensor_height: Optional[int] = None
+    boxes_before_nms: Optional[int] = None
+    boxes_after_nms: Optional[int] = None
 
 
 class DetectResponse(BaseModel):
@@ -69,13 +84,26 @@ transform = T.Compose(
     ]
 )
 
+def elapsed_ms(start_ns: int, end_ns: int) -> float:
+    return max(0, end_ns - start_ns) / 1_000_000.0
+
+
 def prepare_image(data: bytes):
+    decode_start_ns = server_now_ns()
     image_pil = Image.open(io.BytesIO(data))
     # 自动根据 EXIF 信息旋转图片（解决手机照片侧躺问题）
     image_pil = ImageOps.exif_transpose(image_pil)
     image_pil = image_pil.convert("RGB")
+    decode_end_ns = server_now_ns()
+    transform_start_ns = decode_end_ns
     image_tensor, _ = transform(image_pil, None)
-    return image_pil, image_tensor
+    transform_end_ns = server_now_ns()
+    return (
+        image_pil,
+        image_tensor,
+        elapsed_ms(decode_start_ns, decode_end_ns),
+        elapsed_ms(transform_start_ns, transform_end_ns),
+    )
 
 def tensor_boxes_to_xyxy(boxes, size):
     # cxcywh -> xyxy in pixel space
@@ -305,18 +333,30 @@ async def detect(
     images: List[UploadFile] = File(...),
 ):
     t_process_start_ns = server_now_ns()
+    server_request_body_complete_ns = getattr(request.state, "server_request_body_complete_ns", None)
+    if server_request_body_complete_ns is None:
+        server_request_body_complete_ns = t_process_start_ns
+    server_post_body_parse_ms = elapsed_ms(
+        int(server_request_body_complete_ns),
+        t_process_start_ns,
+    )
+
     if not images:
         raise HTTPException(status_code=400, detail="images array cannot be empty")
 
     # robust parsing for optional JSON fields
+    request_parse_start_ns = server_now_ns()
     token_spans = _parse_optional_json_list("token_spans", prompt_token_spans)
     ids_list = _parse_optional_json_list("image_ids", image_ids)
     if ids_list is not None and len(ids_list) != len(images):
         raise HTTPException(
             status_code=400, detail="image_ids length must match number of uploaded images"
         )
+    request_parse_end_ns = server_now_ns()
 
+    model_lookup_start_ns = server_now_ns()
     model, device = model_manager.get_model(use_gpu)
+    model_lookup_end_ns = server_now_ns()
 
     params = InferenceParams(
         box_threshold=box_threshold,
@@ -328,16 +368,41 @@ async def detect(
 
     results = []
     uploaded_image_bytes = 0
+    server_upload_read_ms = 0.0
+    server_image_decode_ms = 0.0
+    server_image_transform_ms = 0.0
+    server_inference_ms = 0.0
+    server_postprocess_ms = 0.0
+    server_visualization_ms = 0.0
+    uploaded_image_width = None
+    uploaded_image_height = None
+    model_tensor_width = None
+    model_tensor_height = None
+    boxes_before_nms = 0
+    boxes_after_nms = 0
 
     for idx, upload in enumerate(images[: params.max_detections]):
+        upload_read_start_ns = server_now_ns()
         data = await upload.read()
+        upload_read_end_ns = server_now_ns()
+        server_upload_read_ms += elapsed_ms(upload_read_start_ns, upload_read_end_ns)
         uploaded_image_bytes += len(data)
-        image_pil, image_tensor = prepare_image(data)
+        image_pil, image_tensor, image_decode_ms, image_transform_ms = prepare_image(data)
+        server_image_decode_ms += image_decode_ms
+        server_image_transform_ms += image_transform_ms
+        uploaded_image_width = image_pil.size[0]
+        uploaded_image_height = image_pil.size[1]
+        if hasattr(image_tensor, "shape") and len(image_tensor.shape) >= 3:
+            model_tensor_height = int(image_tensor.shape[-2])
+            model_tensor_width = int(image_tensor.shape[-1])
         image_id = ids_list[idx] if ids_list else (upload.filename or f"image_{idx}")
 
         # choose text_threshold depending on whether token_spans provided
         text_threshold_to_use = None if token_spans is not None else params.text_threshold
 
+        if device == "cuda":
+            torch.cuda.synchronize()
+        inference_start_ns = server_now_ns()
         with torch.autocast(device_type=device, enabled=(device == "cuda")):
             boxes, phrases = get_grounding_output(
                 model=model,
@@ -349,6 +414,13 @@ async def detect(
                 cpu_only=(device == "cpu"),
                 token_spans=token_spans,
             )
+        if device == "cuda":
+            torch.cuda.synchronize()
+        inference_end_ns = server_now_ns()
+        server_inference_ms += elapsed_ms(inference_start_ns, inference_end_ns)
+
+        postprocess_start_ns = server_now_ns()
+        boxes_before_nms += len(boxes)
         scores = [float(p[p.rfind("(")+1 : p.rfind(")")]) if "(" in p else 0.0 for p in phrases]
         phrases = [p.split("(")[0] if "(" in p else p for p in phrases]
 
@@ -370,6 +442,7 @@ async def detect(
             boxes = boxes[keep]
             phrases = [phrases[i] for i in keep.tolist()]
             scores = [scores[i] for i in keep.tolist()]
+        boxes_after_nms += len(boxes_xyxy)
 
         result = DetectionResult(
             image_id=image_id,
@@ -378,21 +451,23 @@ async def detect(
             phrases=phrases,
             scores=scores,
         )
+        postprocess_end_ns = server_now_ns()
+        server_postprocess_ms += elapsed_ms(postprocess_start_ns, postprocess_end_ns)
+
         if params.return_visualization:
+            visualization_start_ns = server_now_ns()
             vis_image, _ = plot_boxes_to_image(image_pil.copy(), {"size": image_pil.size[::-1], "boxes": boxes, "labels": phrases})
             buffered = io.BytesIO()
             vis_image.save(buffered, format="JPEG")
             result.visualization_b64 = base64.b64encode(buffered.getvalue()).decode()
+            visualization_end_ns = server_now_ns()
+            server_visualization_ms += elapsed_ms(visualization_start_ns, visualization_end_ns)
         results.append(result)
 
     # Compose metrics using the same monotonic clock as UDP time-sync probes.
     server_request_start_ns = getattr(request.state, "server_request_start_ns", None)
     if server_request_start_ns is None:
         server_request_start_ns = getattr(request.state, "server_receive_ns", t_process_start_ns)
-
-    server_request_body_complete_ns = getattr(request.state, "server_request_body_complete_ns", None)
-    if server_request_body_complete_ns is None:
-        server_request_body_complete_ns = t_process_start_ns
 
     request_body_bytes = int(getattr(request.state, "request_body_bytes", 0) or 0)
     server_response_ready_ns = server_now_ns()
@@ -402,6 +477,15 @@ async def detect(
 
     metrics = Metrics(
         server_processing_ms=server_processing_ms,
+        server_post_body_parse_ms=server_post_body_parse_ms,
+        server_request_parse_ms=elapsed_ms(request_parse_start_ns, request_parse_end_ns),
+        server_model_lookup_ms=elapsed_ms(model_lookup_start_ns, model_lookup_end_ns),
+        server_upload_read_ms=server_upload_read_ms,
+        server_image_decode_ms=server_image_decode_ms,
+        server_image_transform_ms=server_image_transform_ms,
+        server_inference_ms=server_inference_ms,
+        server_postprocess_ms=server_postprocess_ms,
+        server_visualization_ms=server_visualization_ms,
         server_receive_ns=int(server_request_start_ns),
         server_send_ns=int(server_response_ready_ns),
         server_request_start_ns=int(server_request_start_ns),
@@ -409,6 +493,12 @@ async def detect(
         server_response_ready_ns=int(server_response_ready_ns),
         request_body_bytes=request_body_bytes,
         uploaded_image_bytes=uploaded_image_bytes,
+        uploaded_image_width=uploaded_image_width,
+        uploaded_image_height=uploaded_image_height,
+        model_tensor_width=model_tensor_width,
+        model_tensor_height=model_tensor_height,
+        boxes_before_nms=boxes_before_nms,
+        boxes_after_nms=boxes_after_nms,
     )
 
     return DetectResponse(request_id=request_id, device=device, results=results, metrics=metrics)
