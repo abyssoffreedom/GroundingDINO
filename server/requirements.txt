@@ -1,0 +1,9 @@
+# Additional runtime dependencies for server/inference_worker.py.
+# Install these after creating the base GroundingDINO conda environment:
+#   python -m pip install -r server/requirements.txt
+
+fastapi==0.128.8
+uvicorn[standard]==0.39.0
+python-multipart==0.0.20
+pydantic==2.13.3
+pillow-heif==1.1.1
